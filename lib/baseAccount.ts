@@ -100,11 +100,7 @@ export function getBaseAccountSDK() {
   
   if (!sdkInstance) {
     try {
-      // Check for WebView before initializing
-      if (isAndroidWebView()) {
-        sdkInitError = new Error('Base Account SDK not supported in WebView');
-        throw sdkInitError;
-      }
+      // Initialize SDK - it may work even in WebView for some operations
       sdkInstance = createBaseAccountSDK(APP_CONFIG);
     } catch (error) {
       sdkInitError = error instanceof Error ? error : new Error('Failed to initialize SDK');
@@ -118,7 +114,6 @@ export function getBaseAccountSDK() {
  * Check if Base Account SDK is available
  */
 export function isBaseAccountAvailable(): boolean {
-  if (isAndroidWebView()) return false;
   try {
     getBaseAccountSDK();
     return true;
@@ -216,13 +211,19 @@ export async function connectWallet(options?: {
   testnet?: boolean;
   nonce?: string;
 }): Promise<ConnectResult> {
-  // Check if we're in a WebView - SDK popup won't work
+  // Check if we're in a WebView - use Chrome for auth
   if (isAndroidWebView()) {
-    console.warn('Base Account SDK requires browser environment. WebView detected.');
-    return {
-      success: false,
-      error: 'Wallet connection requires opening in a browser. Please use the browser version at baselauncher.vercel.app',
-    };
+    console.log('Android WebView detected - opening auth in Chrome');
+    
+    // Open the wallet connection page in Chrome browser
+    const authUrl = 'https://keys.coinbase.com';
+    if ((window as any).Android?.openUrl) {
+      (window as any).Android.openUrl(authUrl);
+      return {
+        success: false,
+        error: 'Please complete sign-in in Chrome, then return to the app.',
+      };
+    }
   }
 
   try {
@@ -282,9 +283,17 @@ export async function connectWallet(options?: {
     
     // Provide more helpful error messages
     if (errorMessage.includes('Communicator: failed to connect')) {
+      // Try opening in Chrome as fallback
+      if ((window as any).Android?.openUrl) {
+        (window as any).Android.openUrl('https://keys.coinbase.com');
+        return {
+          success: false,
+          error: 'Opening sign-in in Chrome browser. Please complete and return.',
+        };
+      }
       return {
         success: false,
-        error: 'Unable to connect to wallet service. Please check your internet connection and try again. If using the app, try the browser version.',
+        error: 'Unable to connect to wallet service. Please check your internet connection and try again.',
       };
     }
     
