@@ -2128,6 +2128,73 @@ input[type='range'] {
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
+/* Page indicator */
+.page-indicator {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 10px;
+}
+
+/* Base app badge */
+.base-app-icon {
+    position: relative;
+}
+
+.base-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #0052FF;
+    color: white;
+    font-size: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+/* Swipe hint */
+.swipe-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 15px;
+    animation: fadeInOut 3s ease-in-out infinite;
+}
+
+.swipe-hint .icon {
+    font-size: 18px;
+    animation: swipeAnim 1.5s ease-in-out infinite;
+}
+
+@keyframes swipeAnim {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-10px); }
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Pagination dots as buttons */
+.drawer-pagination .page-dot {
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.drawer-pagination .page-dot:hover {
+    transform: scale(1.3);
+    background: rgba(255, 255, 255, 0.8);
+}
+
 .drawer-pagination {
     display: flex;
     justify-content: center;
