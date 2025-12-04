@@ -278,25 +278,59 @@
             }
             
             if (connectedAddress) {
-                // Try custom scheme first
+                console.log('Returning to app with address:', connectedAddress);
+                
+                // Multiple redirect strategies to ensure one works
+                
+                // Strategy 1: Android Intent URL (most reliable for Android)
+                const intentUrl = `intent://auth?address=${encodeURIComponent(connectedAddress)}#Intent;scheme=basephone;package=app.vercel.baselauncher.twa;S.browser_fallback_url=https://baselauncher.vercel.app/callback.html?address=${encodeURIComponent(connectedAddress)};end`;
+                
+                // Strategy 2: Custom scheme
                 const customUrl = `basephone://auth?address=${encodeURIComponent(connectedAddress)}`;
-                console.log('Redirecting to:', customUrl);
                 
-                // Set location to custom scheme
-                window.location.href = customUrl;
+                // Strategy 3: HTTPS deep link
+                const httpsUrl = `https://baselauncher.vercel.app/callback.html?address=${encodeURIComponent(connectedAddress)}`;
                 
-                // Fallback: try intent URL after a delay
+                // Try intent first (works best on Android Chrome)
+                console.log('Trying intent URL:', intentUrl);
+                window.location.href = intentUrl;
+                
+                // If intent doesn't work, try custom scheme after delay
                 setTimeout(() => {
-                    const intentUrl = `intent://auth?address=${encodeURIComponent(connectedAddress)}#Intent;scheme=basephone;package=app.vercel.baselauncher.twa;end`;
-                    window.location.href = intentUrl;
-                }, 1500);
+                    console.log('Trying custom scheme:', customUrl);
+                    window.location.href = customUrl;
+                }, 800);
+                
+                // Final fallback to HTTPS
+                setTimeout(() => {
+                    console.log('Trying HTTPS fallback:', httpsUrl);
+                    window.location.href = httpsUrl;
+                }, 2000);
             } else {
                 alert('No wallet address found. Please connect first.');
             }
         }
         
-        // Disable button until SDK loads
-        document.getElementById('connect-btn').disabled = true;
+        // Check if already connected on page load
+        function checkExistingConnection() {
+            const storedAddress = localStorage.getItem('baseAccount_address');
+            if (storedAddress) {
+                connectedAddress = storedAddress;
+                document.getElementById('wallet-address').textContent = 
+                    storedAddress.slice(0, 10) + '...' + storedAddress.slice(-8);
+                showScreen('success-screen');
+                // Auto redirect
+                setTimeout(returnToApp, 500);
+                return true;
+            }
+            return false;
+        }
+        
+        // Check on page load
+        if (!checkExistingConnection()) {
+            // Disable button until SDK loads
+            document.getElementById('connect-btn').disabled = true;
+        }
         
         // Fallback if SDK doesn't load
         setTimeout(() => {

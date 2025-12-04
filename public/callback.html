@@ -105,46 +105,54 @@
                         <div class="success">✓</div>
                         <h1>Wallet Connected!</h1>
                         <p>Address: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}</p>
-                        <p>Returning to Base Phone...</p>
+                        <p>Opening Base Phone...</p>
+                        <div class="spinner"></div>
                     `;
                     
-                    // Try custom scheme first (works better on Android)
-                    const customSchemeUrl = `basephone://auth?address=${encodeURIComponent(walletAddress)}`;
+                    // Save to localStorage in case we need it
+                    try {
+                        localStorage.setItem('baseAccount_address', walletAddress);
+                        localStorage.setItem('baseAccount_connected', 'true');
+                        localStorage.setItem('baseAccount_setupComplete', 'true');
+                    } catch(e) {}
                     
-                    // Try opening via custom scheme
-                    window.location.href = customSchemeUrl;
+                    // Try multiple redirect methods
+                    const intentUrl = `intent://auth?address=${encodeURIComponent(walletAddress)}#Intent;scheme=basephone;package=app.vercel.baselauncher.twa;end`;
+                    const customUrl = `basephone://auth?address=${encodeURIComponent(walletAddress)}`;
                     
-                    // Fallback: after a delay, try intent URL
+                    // Try intent first
+                    window.location.href = intentUrl;
+                    
+                    // Fallback to custom scheme
                     setTimeout(() => {
-                        // Android intent fallback
-                        const intentUrl = `intent://auth?address=${encodeURIComponent(walletAddress)}#Intent;scheme=basephone;package=app.vercel.baselauncher.twa;end`;
-                        window.location.href = intentUrl;
-                    }, 1000);
+                        window.location.href = customUrl;
+                    }, 800);
                     
-                    // Final fallback: show manual button
+                    // Show manual button after delays
                     setTimeout(() => {
-                        container.innerHTML += `
-                            <a href="${customSchemeUrl}" class="button">Open Base Phone</a>
+                        container.innerHTML = `
+                            <div class="success">✓</div>
+                            <h1>Wallet Connected!</h1>
+                            <p>Address: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}</p>
+                            <a href="${intentUrl}" class="button">Open Base Phone</a>
                             <p style="margin-top: 16px; font-size: 14px; opacity: 0.7;">
-                                If the app doesn't open automatically, tap the button above.
+                                Tap the button to return to the app.
                             </p>
                         `;
-                    }, 2000);
+                    }, 2500);
                 } else {
                     container.innerHTML = `
                         <div class="error" style="font-size: 48px;">✕</div>
                         <h1>Connection Failed</h1>
                         <p>No wallet address received. Please try again.</p>
-                        <a href="/" class="button">Return to App</a>
+                        <a href="/wallet-connect.html" class="button">Try Again</a>
                     `;
                 }
             }
             
-            // Wait a moment for any SDK callbacks to complete
-            setTimeout(() => {
-                const walletAddress = getWalletAddress();
-                redirectToApp(walletAddress);
-            }, 500);
+            // Process immediately
+            const walletAddress = getWalletAddress();
+            redirectToApp(walletAddress);
         })();
     </script>
 </body>

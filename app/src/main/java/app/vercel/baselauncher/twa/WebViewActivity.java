@@ -134,6 +134,9 @@ public class WebViewActivity extends Activity {
                     
                     // Inject helper to open auth URLs in Chrome
                     injectAuthHelper(view);
+                    
+                    // Apply any pending wallet address from deep link
+                    applyPendingWalletAddress();
                 }
             }
         });
@@ -193,7 +196,13 @@ public class WebViewActivity extends Activity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestNecessaryPermissions();
         }
+        
+        // Check if launched with a deep link intent
+        handleIntent(getIntent());
     }
+    
+    // Store pending wallet address to save after page loads
+    private String pendingWalletAddress = null;
     
     /**
      * Handle URL navigation - decide whether to load in WebView or external browser
@@ -382,26 +391,53 @@ public class WebViewActivity extends Activity {
     /**
      * Save wallet address to WebView localStorage and notify the app
      */
-    private void saveWalletAddress(String address) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+    private void saveWalletAddress(final String address) {
+        Log.d(TAG, "saveWalletAddress called with: " + address);
+        
+        // Store for later in case page isn't ready
+        pendingWalletAddress = address;
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && webView != null) {
+            // Inject the address save script
             String js = String.format(
                 "(function() {" +
                 "  try {" +
                 "    localStorage.setItem('baseAccount_address', '%s');" +
                 "    localStorage.setItem('baseAccount_connected', 'true');" +
                 "    localStorage.setItem('baseAccount_setupComplete', 'true');" +
-                "    console.log('Wallet address saved:', '%s');" +
+                "    console.log('Wallet address saved from Android:', '%s');" +
                 "    " +
                 "    // Dispatch event to notify React app" +
-                "    window.dispatchEvent(new CustomEvent('walletConnected', { detail: { address: '%s' } }));" +
+                "    if(window.dispatchEvent) {" +
+                "      window.dispatchEvent(new CustomEvent('walletConnected', { detail: { address: '%s' } }));" +
+                "    }" +
                 "    " +
-                "    // Reload to pick up the new state" +
-                "    window.location.reload();" +
+                "    // Force reload to pick up the new state" +
+                "    setTimeout(function() { window.location.reload(); }, 100);" +
                 "  } catch(e) { console.error('Failed to save wallet:', e); }" +
                 "})();",
                 address, address, address
             );
             webView.evaluateJavascript(js, null);
+        }
+    }
+    
+    /**
+     * Apply any pending wallet address after page loads
+     */
+    private void applyPendingWalletAddress() {
+        if (pendingWalletAddress != null && !pendingWalletAddress.isEmpty()) {
+            Log.d(TAG, "Applying pending wallet address: " + pendingWalletAddress);
+            final String address = pendingWalletAddress;
+            pendingWalletAddress = null; // Clear to avoid double-apply
+            
+            // Small delay to ensure page is ready
+            webView.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    saveWalletAddress(address);
+                }
+            }, 500);
         }
     }
     
