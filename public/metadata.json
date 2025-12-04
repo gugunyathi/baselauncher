@@ -1,0 +1,7 @@
+{
+  "name": "Base Launcher",
+  "description": "AI Chat UI Base Phone Launcher",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
