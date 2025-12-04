@@ -219,6 +219,20 @@ export const TOOLS: Tool[] = [
           required: ['duration'],
         },
       },
+      {
+        name: 'change_language',
+        description: 'Changes the AI assistant\'s speaking language. Use this when the user asks to speak in a different language.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            languageCode: {
+              type: Type.STRING,
+              description: 'The language code to switch to. Examples: "en" (English), "es" (Spanish), "fr" (French), "de" (German), "it" (Italian), "pt" (Portuguese), "pt-BR" (Brazilian Portuguese), "ja" (Japanese), "ko" (Korean), "zh" (Chinese), "ar" (Arabic), "hi" (Hindi), "ru" (Russian), "tr" (Turkish), "nl" (Dutch), "pl" (Polish), "vi" (Vietnamese), "th" (Thai), "id" (Indonesian), "sw" (Swahili), "zu" (Zulu), "af" (Afrikaans), "xh" (Xhosa).',
+            },
+          },
+          required: ['languageCode'],
+        },
+      },
     ],
   },
 ];

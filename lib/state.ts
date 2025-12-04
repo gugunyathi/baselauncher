@@ -5,6 +5,7 @@
 */
 import { create } from 'zustand';
 import { Agent, Charlotte, Paul, Shane, Penny } from './presets/agents';
+import { LanguageConfig, detectUserLanguage, saveLanguagePreference, LANGUAGE_CONFIGS } from './languages';
 
 /**
  * Base Account Wallet State
@@ -26,6 +27,7 @@ export type User = {
   baseName?: string;
   joinDate?: string;
   avatar?: string;
+  language: LanguageConfig;
   wallet: {
     base: number;
     eth: number;
@@ -47,6 +49,7 @@ export const useUser = create<
     setInfo: (info: string) => void;
     setBaseName: (baseName: string) => void;
     setAvatar: (avatar: string) => void;
+    setLanguage: (languageCode: string) => void;
     toggleBalanceVisibility: () => void;
     claimRewards: () => void;
     // Base Account actions
@@ -62,6 +65,7 @@ export const useUser = create<
   baseName: 'user.base.eth',
   joinDate: 'August 2023',
   avatar: undefined,
+  language: detectUserLanguage(),
   wallet: {
     base: 0,
     eth: 0,
@@ -85,6 +89,13 @@ export const useUser = create<
   setInfo: info => set({ info }),
   setBaseName: baseName => set({ baseName }),
   setAvatar: avatar => set({ avatar }),
+  setLanguage: (languageCode: string) => {
+    const langConfig = LANGUAGE_CONFIGS[languageCode];
+    if (langConfig) {
+      saveLanguagePreference(languageCode);
+      set({ language: langConfig });
+    }
+  },
   toggleBalanceVisibility: () =>
     set(state => ({
       wallet: { ...state.wallet, showBalances: !state.wallet.showBalances },

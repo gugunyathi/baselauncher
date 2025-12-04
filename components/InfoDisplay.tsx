@@ -190,14 +190,8 @@ export default function InfoDisplay() {
     return () => clearInterval(weatherInterval);
   }, [fetchWeather]);
 
-  // Detect user's temperature preference (Celsius vs Fahrenheit)
-  useEffect(() => {
-    // Check for locale-based preference
-    const locale = navigator.language || 'en-US';
-    // US, Liberia, Myanmar use Fahrenheit
-    const fahrenheitLocales = ['en-US', 'en-LR', 'my-MM'];
-    setUseCelsius(!fahrenheitLocales.some(l => locale.startsWith(l.split('-')[0]) && locale.includes(l.split('-')[1])));
-  }, []);
+  // Default to Celsius - user can tap to switch to Fahrenheit
+  // No need to detect locale - Celsius is standard worldwide
 
   const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const dateString = date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });

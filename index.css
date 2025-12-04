@@ -2680,7 +2680,8 @@ input[type='range'] {
     margin-bottom: 6px;
 }
 
-.launcher-help-modal .help-close-btn {
+.launcher-help-modal .help-close-btn,
+.language-selector-modal .help-close-btn {
     width: 100%;
     margin-top: 24px;
     padding: 14px;
@@ -2694,6 +2695,91 @@ input[type='range'] {
     transition: background 0.2s;
 }
 
-.launcher-help-modal .help-close-btn:hover {
+.launcher-help-modal .help-close-btn:hover,
+.language-selector-modal .help-close-btn:hover {
     background: var(--Blue-400);
+}
+
+/* Language Selector Modal */
+.language-selector-modal {
+    background: var(--gray-900);
+    border: 1px solid var(--gray-700);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 340px;
+    width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.language-selector-modal h3 {
+    margin-bottom: 8px;
+    font-size: 20px;
+    text-align: center;
+}
+
+.language-selector-modal .language-hint {
+    font-size: 13px;
+    color: var(--gray-300);
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.language-selector-modal .language-list {
+    overflow-y: auto;
+    max-height: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 4px;
+}
+
+.language-selector-modal .language-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--gray-800);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.language-selector-modal .language-item:hover {
+    background: var(--gray-700);
+}
+
+.language-selector-modal .language-item.selected {
+    background: rgba(31, 148, 255, 0.15);
+    border-color: var(--Blue-500);
+}
+
+.language-selector-modal .language-item .lang-native {
+    font-size: 15px;
+    font-weight: 500;
+    color: white;
+}
+
+.language-selector-modal .language-item .lang-english {
+    font-size: 13px;
+    color: var(--gray-300);
+    margin-left: auto;
+    margin-right: 12px;
+}
+
+.language-selector-modal .language-item .check-icon {
+    color: var(--Blue-400);
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.language-selector-modal .language-note {
+    font-size: 12px;
+    color: var(--gray-500);
+    text-align: center;
+    margin-top: 12px;
+    font-style: italic;
 }

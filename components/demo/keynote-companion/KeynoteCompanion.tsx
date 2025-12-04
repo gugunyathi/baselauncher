@@ -14,6 +14,7 @@ import { useAgent, useUI, useUser } from '@/lib/state';
 import { TOOLS } from '@/lib/tools';
 import { useBaseAccount } from '@/hooks/useBaseAccount';
 import { sendToken } from '@/lib/baseAccount';
+import { LANGUAGE_CONFIGS } from '@/lib/languages';
 import confetti from 'canvas-confetti';
 
 // App package mappings for launching
@@ -73,7 +74,7 @@ export default function KeynoteCompanion() {
     setShowAgentEdit 
   } = useUI();
 
-  const { toggleBalanceVisibility, claimRewards } = useUser();
+  const { toggleBalanceVisibility, claimRewards, setLanguage, language } = useUser();
 
   // Set the configuration for the Live API
   useEffect(() => {
@@ -375,6 +376,27 @@ export default function KeynoteCompanion() {
               break;
             }
             
+            case 'change_language': {
+              const { languageCode } = fc.args as any;
+              if (languageCode && LANGUAGE_CONFIGS[languageCode]) {
+                setLanguage(languageCode);
+                const newLang = LANGUAGE_CONFIGS[languageCode];
+                result = { 
+                  status: 'success', 
+                  message: `Language changed to ${newLang.nativeName} (${newLang.name}). Please reconnect to apply the language change.`,
+                  newLanguage: newLang.name,
+                  nativeName: newLang.nativeName,
+                  greeting: newLang.greeting
+                };
+              } else {
+                result = { 
+                  status: 'error', 
+                  message: `Language "${languageCode}" not supported. Available: English, Spanish, French, German, Italian, Portuguese, Japanese, Korean, Chinese, Arabic, Hindi, Russian, Turkish, Dutch, Polish, Vietnamese, Thai, Indonesian, Swahili, Zulu, Afrikaans, Xhosa.` 
+                };
+              }
+              break;
+            }
+            
             default:
               console.warn('Unknown function call:', fc.name);
               result = { status: 'error', message: `Unknown function: ${fc.name}` };
@@ -398,7 +420,7 @@ export default function KeynoteCompanion() {
     return () => {
       client.off('toolcall', onToolCall);
     };
-  }, [client, address, balances, refreshBalances, setShowWallet, setShowRewards, setShowDialer, setShowAppDrawer, setShowUserConfig, setShowAgentEdit, toggleBalanceVisibility, claimRewards, updateAgent, current.id]);
+  }, [client, address, balances, refreshBalances, setShowWallet, setShowRewards, setShowDialer, setShowAppDrawer, setShowUserConfig, setShowAgentEdit, toggleBalanceVisibility, claimRewards, updateAgent, current.id, setLanguage]);
 
   // Initiate the session when the Live API connection is established
   useEffect(() => {

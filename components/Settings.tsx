@@ -6,6 +6,7 @@
 import Modal from './Modal';
 import { useUI, useUser } from '@/lib/state';
 import { useState } from 'react';
+import { getAvailableLanguages, LanguageConfig } from '@/lib/languages';
 
 // Check if running as an installed Android app (TWA/WebAPK)
 const isAndroidApp = () => {
@@ -18,8 +19,11 @@ const isAndroidApp = () => {
 
 export default function Settings() {
   const { setShowSettings, setShowUserConfig, setShowAgentEdit, setShowWallet } = useUI();
-  const { wallet, toggleBalanceVisibility } = useUser();
+  const { wallet, toggleBalanceVisibility, language, setLanguage } = useUser();
   const [showLauncherHelp, setShowLauncherHelp] = useState(false);
+  const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  
+  const availableLanguages = getAvailableLanguages();
 
   const handleOpenProfile = () => {
     setShowSettings(false);
@@ -98,6 +102,15 @@ export default function Settings() {
                 </div>
                 <span className="icon arrow">chevron_right</span>
             </button>
+            
+            <button className="settings-item" onClick={() => setShowLanguageSelector(true)}>
+                <span className="icon">translate</span>
+                <div className="settings-text">
+                    <span className="title">AI Language</span>
+                    <span className="subtitle">{language.nativeName} ({language.name})</span>
+                </div>
+                <span className="icon arrow">chevron_right</span>
+            </button>
         </div>
 
         <div className="settings-section">
@@ -166,6 +179,36 @@ export default function Settings() {
               </div>
               <button className="help-close-btn" onClick={() => setShowLauncherHelp(false)}>
                 Got it
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Language Selector Modal */}
+        {showLanguageSelector && (
+          <div className="launcher-help-overlay" onClick={() => setShowLanguageSelector(false)}>
+            <div className="language-selector-modal" onClick={e => e.stopPropagation()}>
+              <h3>🌍 AI Language</h3>
+              <p className="language-hint">Select the language your AI assistant will speak</p>
+              <div className="language-list">
+                {availableLanguages.map((lang) => (
+                  <button 
+                    key={lang.code}
+                    className={`language-item ${language.code === lang.code ? 'selected' : ''}`}
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      setShowLanguageSelector(false);
+                    }}
+                  >
+                    <span className="lang-native">{lang.nativeName}</span>
+                    <span className="lang-english">{lang.name}</span>
+                    {language.code === lang.code && <span className="check-icon">✓</span>}
+                  </button>
+                ))}
+              </div>
+              <p className="language-note">Note: Reconnect to the AI for changes to take effect.</p>
+              <button className="help-close-btn" onClick={() => setShowLanguageSelector(false)}>
+                Close
               </button>
             </div>
           </div>
