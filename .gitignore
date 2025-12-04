@@ -23,3 +23,21 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Android build outputs
+app/build/
+build/
+
+# Android signing keys (keep private!)
+*.keystore
+*.jks
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Generated APK/AAB files
+*.apk
+*.aab
+*.idsig
