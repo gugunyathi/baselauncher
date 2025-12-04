@@ -205,24 +205,33 @@ export interface ConnectResult {
 
 /**
  * Connect wallet with Sign in with Base (SIWB)
- * This creates a new account with passkey backup automatically
+ * In WebView: Opens Chrome browser for authentication
+ * In Browser: Uses SDK popup directly
  */
 export async function connectWallet(options?: {
   testnet?: boolean;
 }): Promise<ConnectResult> {
-  // Check if we're in a WebView - use Chrome for auth
+  // Check if we're in a WebView - must use Chrome for passkey auth
   if (isAndroidWebView()) {
-    console.log('Android WebView detected - opening auth in Chrome');
+    console.log('Android WebView detected - opening Base Account in Chrome');
     
-    // Open the wallet connection page in Chrome browser
-    const authUrl = 'https://keys.coinbase.com';
+    // Open the Base web app in Chrome where auth will work
+    // User completes sign-in there, then wallet state syncs via localStorage
+    const webAppUrl = 'https://baselauncher.vercel.app/?connect=true';
     if ((window as any).Android?.openUrl) {
-      (window as any).Android.openUrl(authUrl);
+      (window as any).Android.openUrl(webAppUrl);
       return {
         success: false,
-        error: 'Please complete sign-in in Chrome, then return to the app.',
+        error: 'Opening in Chrome browser. Complete sign-in there, then return to the app.',
       };
     }
+    
+    // Fallback: try opening in a new window
+    window.open(webAppUrl, '_blank');
+    return {
+      success: false,
+      error: 'Opening sign-in page. Complete in browser and return.',
+    };
   }
 
   try {
@@ -268,24 +277,16 @@ export async function connectWallet(options?: {
     
     // Provide more helpful error messages
     if (errorMessage.includes('Communicator: failed to connect')) {
-      // Try opening in Chrome as fallback
-      if ((window as any).Android?.openUrl) {
-        (window as any).Android.openUrl('https://keys.coinbase.com');
-        return {
-          success: false,
-          error: 'Opening sign-in in Chrome browser. Please complete and return.',
-        };
-      }
       return {
         success: false,
-        error: 'Unable to connect to wallet service. Please check your internet connection and try again.',
+        error: 'Connection failed. Please try again or use the browser version.',
       };
     }
     
     if (errorMessage.includes('popup') || errorMessage.includes('blocked')) {
       return {
         success: false,
-        error: 'Popup was blocked. Please allow popups for this site and try again.',
+        error: 'Popup was blocked. Please allow popups for this site.',
       };
     }
     

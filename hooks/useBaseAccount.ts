@@ -272,36 +272,31 @@ export function useBaseAccount(): UseBaseAccountReturn {
 
 /**
  * Hook for automatic Base Account setup on first launch
- * Call this once at the app level to trigger automatic setup
+ * Only restores existing connection from localStorage, never auto-connects
+ * This avoids popups/errors in WebView environments
  */
 export function useAutoSetupBaseAccount(): void {
-  const { baseAccount } = useUser();
-  const { connect } = useBaseAccount();
-  const setupAttempted = useRef(false);
+  const { baseAccount, setBaseAccountInitialized, setBaseAccountConnected } = useUser();
+  const initAttempted = useRef(false);
 
   useEffect(() => {
     // Only attempt once
-    if (setupAttempted.current) {
+    if (initAttempted.current || baseAccount.isInitialized) {
       return;
     }
 
-    // Wait for initialization check to complete
-    if (!baseAccount.isInitialized) {
-      return;
-    }
+    initAttempted.current = true;
 
-    // If already connected, no need to setup
-    if (baseAccount.isConnected) {
-      return;
+    // Only restore existing connection from localStorage
+    // Never auto-connect (this would fail in WebView)
+    if (isAccountSetUp()) {
+      const storedAddress = getStoredAddress();
+      if (storedAddress) {
+        setBaseAccountConnected(storedAddress);
+      }
     }
-
-    // Check if this is first time (no stored address)
-    if (!isAccountSetUp()) {
-      setupAttempted.current = true;
-      // Attempt automatic connection in background
-      // Note: This will prompt user for passkey creation on first use
-      // The SDK handles passkey backup to device automatically
-      connect().catch(console.error);
-    }
-  }, [baseAccount.isInitialized, baseAccount.isConnected, connect]);
+    
+    // Mark as initialized (without attempting connection)
+    setBaseAccountInitialized(true);
+  }, [baseAccount.isInitialized, setBaseAccountConnected, setBaseAccountInitialized]);
 }
