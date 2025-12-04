@@ -119,7 +119,7 @@ const getInstalledApps = (): InstalledApp[] => {
   }
 };
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 20;
 
 export default function AppDrawer() {
   const { setShowAppDrawer, setShowUserConfig } = useUI();
@@ -259,15 +259,8 @@ export default function AppDrawer() {
   };
 
   return (
-    <Modal onClose={() => setShowAppDrawer(false)} className="full-screen">
+    <Modal onClose={() => setShowAppDrawer(false)} className="full-screen app-drawer-modal">
       <div className="app-drawer-container">
-        <h2 className="drawer-title">All Apps</h2>
-        
-        {/* Page indicator showing current/total */}
-        <div className="page-indicator">
-          {currentPage + 1} / {pages.length}
-        </div>
-        
         <div 
           className="app-drawer-pages" 
           ref={scrollRef} 
