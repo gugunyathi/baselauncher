@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { useUI, useUser } from '@/lib/state';
 import { useBaseAccount } from '@/hooks/useBaseAccount';
-import { Transaction, TokenBalance } from '@/lib/baseAccount';
+import { Transaction, TokenBalance, isAndroidWebView } from '@/lib/baseAccount';
 
 type WalletTab = 'assets' | 'activity' | 'send' | 'receive';
 type SendToken = 'ETH' | 'USDC' | 'cbBTC';
@@ -507,13 +507,36 @@ export default function Wallet() {
               <span className="icon">account_balance_wallet</span>
             </div>
             <h3>Welcome to Base Wallet</h3>
-            <p>Connect your Base Account to view balances, send transactions, and manage your crypto.</p>
-            <ul className="feature-list">
-              <li><span className="icon">check</span> Passkey-secured wallet</li>
-              <li><span className="icon">check</span> Send & receive ETH and USDC</li>
-              <li><span className="icon">check</span> Transaction history</li>
-              <li><span className="icon">check</span> Sign messages</li>
-            </ul>
+            {isAndroidWebView() ? (
+              <>
+                <p className="webview-notice">
+                  Wallet features require opening in a browser for secure passkey authentication.
+                </p>
+                <button 
+                  onClick={() => {
+                    if ((window as any).Android?.openUrl) {
+                      (window as any).Android.openUrl('https://baselauncher.vercel.app');
+                    } else {
+                      window.open('https://baselauncher.vercel.app', '_blank');
+                    }
+                  }}
+                  className="open-browser-btn"
+                >
+                  <span className="icon">open_in_browser</span>
+                  Open in Browser
+                </button>
+              </>
+            ) : (
+              <>
+                <p>Connect your Base Account to view balances, send transactions, and manage your crypto.</p>
+                <ul className="feature-list">
+                  <li><span className="icon">check</span> Passkey-secured wallet</li>
+                  <li><span className="icon">check</span> Send & receive ETH and USDC</li>
+                  <li><span className="icon">check</span> Transaction history</li>
+                  <li><span className="icon">check</span> Sign messages</li>
+                </ul>
+              </>
+            )}
           </div>
         )}
 

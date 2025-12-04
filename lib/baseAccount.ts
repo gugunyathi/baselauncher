@@ -21,6 +21,39 @@ const APP_CONFIG = {
   appLogoUrl: 'https://baselauncher.vercel.app/icon-192x192.png',
 };
 
+// Detect if running in Android WebView
+export function isAndroidWebView(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  // Check for Android WebView indicators
+  return (
+    ua.includes('wv') || // WebView marker
+    (ua.includes('android') && !ua.includes('chrome')) || // Android without Chrome
+    (window as any).Android !== undefined // Our custom Android bridge
+  );
+}
+
+// Detect if running in a restricted environment (WebView, iframe issues)
+export function isRestrictedEnvironment(): boolean {
+  if (typeof window === 'undefined') return true;
+  
+  // Check for Android WebView
+  if (isAndroidWebView()) return true;
+  
+  // Check if popups are likely blocked
+  try {
+    // Some WebViews block window.open
+    if (window.opener === null && window.parent === window) {
+      // We're in a top-level context, should be fine
+      return false;
+    }
+  } catch {
+    return true;
+  }
+  
+  return false;
+}
+
 // Base Chain IDs
 export const CHAIN_IDS = {
   BASE_MAINNET: '0x2105', // 8453
@@ -55,15 +88,43 @@ const ERC20_BALANCE_ABI = [
 
 // Create SDK instance (singleton)
 let sdkInstance: ReturnType<typeof createBaseAccountSDK> | null = null;
+let sdkInitError: Error | null = null;
 
 /**
  * Get or create the Base Account SDK instance
  */
 export function getBaseAccountSDK() {
+  if (sdkInitError) {
+    throw sdkInitError;
+  }
+  
   if (!sdkInstance) {
-    sdkInstance = createBaseAccountSDK(APP_CONFIG);
+    try {
+      // Check for WebView before initializing
+      if (isAndroidWebView()) {
+        sdkInitError = new Error('Base Account SDK not supported in WebView');
+        throw sdkInitError;
+      }
+      sdkInstance = createBaseAccountSDK(APP_CONFIG);
+    } catch (error) {
+      sdkInitError = error instanceof Error ? error : new Error('Failed to initialize SDK');
+      throw sdkInitError;
+    }
   }
   return sdkInstance;
+}
+
+/**
+ * Check if Base Account SDK is available
+ */
+export function isBaseAccountAvailable(): boolean {
+  if (isAndroidWebView()) return false;
+  try {
+    getBaseAccountSDK();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -155,6 +216,15 @@ export async function connectWallet(options?: {
   testnet?: boolean;
   nonce?: string;
 }): Promise<ConnectResult> {
+  // Check if we're in a WebView - SDK popup won't work
+  if (isAndroidWebView()) {
+    console.warn('Base Account SDK requires browser environment. WebView detected.');
+    return {
+      success: false,
+      error: 'Wallet connection requires opening in a browser. Please use the browser version at baselauncher.vercel.app',
+    };
+  }
+
   try {
     const provider = getProvider();
     const testnet = options?.testnet ?? false;
@@ -166,9 +236,8 @@ export async function connectWallet(options?: {
     // Switch to Base chain first
     await switchToBaseChain(testnet);
     
-    // Connect and authenticate with passkey
-    // The SDK handles passkey creation/backup automatically
-    const response = await provider.request({
+    // Set a timeout for the connection attempt
+    const connectionPromise = provider.request({
       method: 'wallet_connect',
       params: [
         {
@@ -183,8 +252,17 @@ export async function connectWallet(options?: {
       ],
     });
 
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout - please try again')), 30000);
+    });
+
+    // Connect and authenticate with passkey
+    // The SDK handles passkey creation/backup automatically
+    const response = await Promise.race([connectionPromise, timeoutPromise]) as { accounts: Array<{ address: string }> };
+
     // Extract address from response
-    const { accounts } = response as { accounts: Array<{ address: string }> };
+    const { accounts } = response;
     const address = accounts?.[0]?.address;
     
     if (!address) {
@@ -201,6 +279,21 @@ export async function connectWallet(options?: {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Connection failed';
     console.error('Wallet connection failed:', error);
+    
+    // Provide more helpful error messages
+    if (errorMessage.includes('Communicator: failed to connect')) {
+      return {
+        success: false,
+        error: 'Unable to connect to wallet service. Please check your internet connection and try again. If using the app, try the browser version.',
+      };
+    }
+    
+    if (errorMessage.includes('popup') || errorMessage.includes('blocked')) {
+      return {
+        success: false,
+        error: 'Popup was blocked. Please allow popups for this site and try again.',
+      };
+    }
     
     return {
       success: false,
