@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Modal from './Modal';
 import { useUI } from '@/lib/state';
+import { hasAndroidBridge, launchAndroidApp } from '@/lib/android-bridge';
 import c from 'classnames';
 
 // Base ecosystem apps (always shown first)
@@ -189,20 +190,13 @@ export default function AppDrawer() {
       window.open(app.url, '_blank');
       setShowAppDrawer(false);
     } else if (app.package) {
-      // Try Android intent
-      if ((window as any).Android?.launchApp) {
-        (window as any).Android.launchApp(app.package);
+      // Use the Android bridge to launch the app
+      const launched = launchAndroidApp(app.package);
+      if (launched) {
         setShowAppDrawer(false);
       } else {
-        // Fallback: try intent URL scheme
-        const intentUrl = `intent://#Intent;package=${app.package};end`;
-        window.location.href = intentUrl;
-        
-        // If that fails, try market URL
-        setTimeout(() => {
-          window.open(`https://play.google.com/store/apps/details?id=${app.package}`, '_blank');
-        }, 500);
-        setShowAppDrawer(false);
+        // If launch failed, show app drawer still
+        console.log(`Failed to launch ${app.name}`);
       }
     } else {
       console.log(`Launching ${app.name}`);

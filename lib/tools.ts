@@ -29,7 +29,7 @@ export const TOOLS: Tool[] = [
       },
       {
         name: 'call_phone',
-        description: 'Opens the phone dialer and initiates a call to a phone number.',
+        description: 'Opens the phone dialer and initiates a call to a phone number. Can also call a contact by name if their number is known.',
         parameters: {
           type: Type.OBJECT,
           properties: {
@@ -89,6 +89,38 @@ export const TOOLS: Tool[] = [
         },
       },
       {
+        name: 'search_contacts',
+        description: 'Search for contacts by name. Returns matching contacts with their phone numbers.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            query: {
+              type: Type.STRING,
+              description: 'The name or partial name to search for (e.g., "John", "Mom", "Doctor").',
+            },
+          },
+          required: ['query'],
+        },
+      },
+      {
+        name: 'get_contacts',
+        description: 'Get a list of all contacts from the phone. Limited to first 100 contacts.',
+      },
+      {
+        name: 'navigate_to',
+        description: 'Opens Google Maps and starts navigation to a destination address or place.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            destination: {
+              type: Type.STRING,
+              description: 'The destination address, place name, or location to navigate to (e.g., "Central Park", "123 Main Street", "nearest gas station").',
+            },
+          },
+          required: ['destination'],
+        },
+      },
+      {
         name: 'send_crypto',
         description: 'Sends cryptocurrency (ETH, USDC, or cbBTC) to a wallet address on Base network. Requires user confirmation.',
         parameters: {
@@ -143,13 +175,13 @@ export const TOOLS: Tool[] = [
       },
       {
         name: 'launch_app',
-        description: 'Launches an installed app on the device by name.',
+        description: 'Launches an installed app on the device by name. Use this to open apps like WhatsApp, Instagram, YouTube, etc.',
         parameters: {
           type: Type.OBJECT,
           properties: {
             appName: {
               type: Type.STRING,
-              description: 'The name of the app to launch (e.g., "WhatsApp", "Instagram", "YouTube", "Spotify", "Gmail", "Maps", "Camera", "Chrome").',
+              description: 'The name of the app to launch (e.g., "WhatsApp", "Instagram", "YouTube", "Spotify", "Gmail", "Maps", "Camera", "Chrome", "Telegram", "Facebook", "Twitter", "TikTok", "Netflix", "Snapchat", "Discord", "Messages", "Contacts", "Calendar", "Clock").',
             },
           },
           required: ['appName'],
@@ -232,6 +264,10 @@ export const TOOLS: Tool[] = [
           },
           required: ['languageCode'],
         },
+      },
+      {
+        name: 'open_contacts',
+        description: 'Opens the contacts app on the device.',
       },
     ],
   },

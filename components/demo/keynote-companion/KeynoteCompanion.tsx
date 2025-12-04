@@ -15,6 +15,17 @@ import { TOOLS } from '@/lib/tools';
 import { useBaseAccount } from '@/hooks/useBaseAccount';
 import { sendToken } from '@/lib/baseAccount';
 import { LANGUAGE_CONFIGS } from '@/lib/languages';
+import {
+  hasAndroidBridge,
+  launchAndroidApp,
+  makePhoneCall,
+  sendSMS,
+  sendWhatsAppMessage,
+  searchContacts,
+  getContacts,
+  navigateTo,
+  openContactsApp,
+} from '@/lib/android-bridge';
 import confetti from 'canvas-confetti';
 
 // App package mappings for launching
@@ -34,6 +45,7 @@ const APP_PACKAGES: Record<string, string> = {
   'discord': 'com.discord',
   'gmail': 'com.google.android.gm',
   'maps': 'com.google.android.apps.maps',
+  'google maps': 'com.google.android.apps.maps',
   'drive': 'com.google.android.apps.docs',
   'calendar': 'com.google.android.calendar',
   'clock': 'com.google.android.deskclock',
@@ -45,10 +57,39 @@ const APP_PACKAGES: Record<string, string> = {
   'phone': 'com.google.android.dialer',
   'contacts': 'com.google.android.contacts',
   'messages': 'com.google.android.apps.messaging',
+  'sms': 'com.google.android.apps.messaging',
   'playstore': 'com.android.vending',
   'play store': 'com.android.vending',
   'files': 'com.google.android.documentsui',
   'settings': 'com.android.settings',
+  'music': 'com.google.android.music',
+  'podcasts': 'com.google.android.apps.podcasts',
+  'news': 'com.google.android.apps.magazines',
+  'keep': 'com.google.android.keep',
+  'notes': 'com.google.android.keep',
+  'meet': 'com.google.android.apps.tachyon',
+  'duo': 'com.google.android.apps.tachyon',
+  'translate': 'com.google.android.apps.translate',
+  'lens': 'com.google.ar.lens',
+  'wallet': 'com.google.android.apps.walletnfcrel',
+  'pay': 'com.google.android.apps.nbu.paisa.user',
+  'uber': 'com.ubercab',
+  'lyft': 'me.lyft.android',
+  'amazon': 'com.amazon.mShop.android.shopping',
+  'ebay': 'com.ebay.mobile',
+  'aliexpress': 'com.alibaba.aliexpresshd',
+  'shein': 'com.zzkko',
+  'reddit': 'com.reddit.frontpage',
+  'pinterest': 'com.pinterest',
+  'linkedin': 'com.linkedin.android',
+  'slack': 'com.Slack',
+  'zoom': 'us.zoom.videomeetings',
+  'teams': 'com.microsoft.teams',
+  'outlook': 'com.microsoft.office.outlook',
+  'word': 'com.microsoft.office.word',
+  'excel': 'com.microsoft.office.excel',
+  'powerpoint': 'com.microsoft.office.powerpoint',
+  'onenote': 'com.microsoft.office.onenote',
 };
 
 export default function KeynoteCompanion() {
@@ -95,46 +136,6 @@ export default function KeynoteCompanion() {
       tools: TOOLS,
     });
   }, [setConfig, user, current]);
-
-  // Helper function to launch Android app
-  const launchAndroidApp = (packageName: string) => {
-    if ((window as any).Android?.launchApp) {
-      (window as any).Android.launchApp(packageName);
-      return true;
-    }
-    // Fallback: try intent URL
-    const intentUrl = `intent://#Intent;package=${packageName};end`;
-    window.location.href = intentUrl;
-    return true;
-  };
-
-  // Helper to make phone call
-  const makePhoneCall = (phoneNumber: string) => {
-    const telUrl = `tel:${phoneNumber.replace(/\s+/g, '')}`;
-    if ((window as any).Android?.makeCall) {
-      (window as any).Android.makeCall(phoneNumber);
-    } else {
-      window.location.href = telUrl;
-    }
-  };
-
-  // Helper to send SMS
-  const sendSMS = (phoneNumber: string, message: string) => {
-    const smsUrl = `sms:${phoneNumber}?body=${encodeURIComponent(message)}`;
-    if ((window as any).Android?.sendSMS) {
-      (window as any).Android.sendSMS(phoneNumber, message);
-    } else {
-      window.location.href = smsUrl;
-    }
-  };
-
-  // Helper to send WhatsApp message
-  const sendWhatsAppMessage = (phoneNumber: string, message: string) => {
-    // Remove any non-digit characters except +
-    const cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
-    const waUrl = `https://wa.me/${cleanNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
-  };
 
   // Handle Tool Calls
   useEffect(() => {
@@ -394,6 +395,67 @@ export default function KeynoteCompanion() {
                   message: `Language "${languageCode}" not supported. Available: English, Spanish, French, German, Italian, Portuguese, Japanese, Korean, Chinese, Arabic, Hindi, Russian, Turkish, Dutch, Polish, Vietnamese, Thai, Indonesian, Swahili, Zulu, Afrikaans, Xhosa.` 
                 };
               }
+              break;
+            }
+            
+            case 'search_contacts': {
+              const { query } = fc.args as any;
+              if (query) {
+                const contacts = searchContacts(query);
+                if (contacts.length > 0) {
+                  const contactList = contacts.map(c => `${c.name}: ${c.phone} (${c.type})`).join('; ');
+                  result = { 
+                    status: 'success', 
+                    contacts: contacts,
+                    message: `Found ${contacts.length} contact(s): ${contactList}` 
+                  };
+                } else {
+                  result = { 
+                    status: 'success', 
+                    contacts: [],
+                    message: `No contacts found matching "${query}". Try granting contacts permission or check the spelling.` 
+                  };
+                }
+              } else {
+                result = { status: 'error', message: 'Missing search query' };
+              }
+              break;
+            }
+            
+            case 'get_contacts': {
+              const contacts = getContacts();
+              if (contacts.length > 0) {
+                const contactList = contacts.slice(0, 10).map(c => `${c.name}: ${c.phone}`).join('; ');
+                result = { 
+                  status: 'success', 
+                  contacts: contacts,
+                  count: contacts.length,
+                  message: `Found ${contacts.length} contacts. First 10: ${contactList}${contacts.length > 10 ? '...' : ''}` 
+                };
+              } else {
+                result = { 
+                  status: 'success', 
+                  contacts: [],
+                  message: 'No contacts found. Please grant contacts permission first.' 
+                };
+              }
+              break;
+            }
+            
+            case 'navigate_to': {
+              const { destination } = fc.args as any;
+              if (destination) {
+                navigateTo(destination);
+                result = { status: 'success', message: `Starting navigation to ${destination}` };
+              } else {
+                result = { status: 'error', message: 'Missing destination' };
+              }
+              break;
+            }
+            
+            case 'open_contacts': {
+              openContactsApp();
+              result = { status: 'success', message: 'Opening contacts app' };
               break;
             }
             
