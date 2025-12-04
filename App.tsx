@@ -33,6 +33,7 @@ import Settings from './components/Settings';
 import { LiveAPIProvider } from './contexts/LiveAPIContext';
 import { useAgent, useUI } from './lib/state';
 import { AGENT_THEMES } from '@/lib/presets/agents';
+import { useAutoSetupBaseAccount } from '@/hooks/useBaseAccount';
 
 const API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -63,6 +64,11 @@ function App() {
       </div>
     );
   }
+  
+  // Auto-setup Base Account on first launch
+  // This will prompt user to create a passkey-backed wallet
+  useAutoSetupBaseAccount();
+  
   const { 
     showUserConfig, 
     showAgentEdit, 

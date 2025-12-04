@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@base-org/account": "^2.5.0",
+    "@base-org/account-ui": "^1.0.1",
     "@google/genai": "^1.31.0",
     "canvas-confetti": "^1.9.3",
     "classnames": "^2.5.1",

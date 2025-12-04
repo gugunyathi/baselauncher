@@ -7,6 +7,17 @@ import { create } from 'zustand';
 import { Agent, Charlotte, Paul, Shane, Penny } from './presets/agents';
 
 /**
+ * Base Account Wallet State
+ */
+export type BaseAccountState = {
+  address: string | null;
+  isConnected: boolean;
+  isConnecting: boolean;
+  isInitialized: boolean;
+  error: string | null;
+};
+
+/**
  * User
  */
 export type User = {
@@ -22,6 +33,7 @@ export type User = {
     btc: number;
     showBalances: boolean;
   };
+  baseAccount: BaseAccountState;
   rewards: {
     streak: number;
     points: number;
@@ -37,6 +49,12 @@ export const useUser = create<
     setAvatar: (avatar: string) => void;
     toggleBalanceVisibility: () => void;
     claimRewards: () => void;
+    // Base Account actions
+    setBaseAccountConnecting: (connecting: boolean) => void;
+    setBaseAccountConnected: (address: string) => void;
+    setBaseAccountError: (error: string | null) => void;
+    setBaseAccountInitialized: (initialized: boolean) => void;
+    disconnectBaseAccount: () => void;
   } & User
 >(set => ({
   name: '',
@@ -45,15 +63,22 @@ export const useUser = create<
   joinDate: 'August 2023',
   avatar: undefined,
   wallet: {
-    base: 1540.50, // Mock "BASE" ecosystem value or token
-    eth: 0.45,
-    usdc: 1200.00,
-    btc: 0.02,
+    base: 0,
+    eth: 0,
+    usdc: 0,
+    btc: 0,
     showBalances: true,
   },
+  baseAccount: {
+    address: null,
+    isConnected: false,
+    isConnecting: false,
+    isInitialized: false,
+    error: null,
+  },
   rewards: {
-    streak: 5,
-    points: 450,
+    streak: 0,
+    points: 0,
     lastClaimed: null,
   },
   setName: name => set({ name }),
@@ -76,6 +101,41 @@ export const useUser = create<
             }
         }
     }),
+  // Base Account state management
+  setBaseAccountConnecting: (connecting: boolean) =>
+    set(state => ({
+      baseAccount: { ...state.baseAccount, isConnecting: connecting, error: null },
+    })),
+  setBaseAccountConnected: (address: string) =>
+    set(state => ({
+      baseAccount: {
+        ...state.baseAccount,
+        address,
+        isConnected: true,
+        isConnecting: false,
+        error: null,
+      },
+      baseName: `${address.slice(0, 6)}...${address.slice(-4)}.base.eth`,
+    })),
+  setBaseAccountError: (error: string | null) =>
+    set(state => ({
+      baseAccount: { ...state.baseAccount, error, isConnecting: false },
+    })),
+  setBaseAccountInitialized: (initialized: boolean) =>
+    set(state => ({
+      baseAccount: { ...state.baseAccount, isInitialized: initialized },
+    })),
+  disconnectBaseAccount: () =>
+    set(state => ({
+      baseAccount: {
+        address: null,
+        isConnected: false,
+        isConnecting: false,
+        isInitialized: true,
+        error: null,
+      },
+      baseName: 'user.base.eth',
+    })),
 }));
 
 /**
