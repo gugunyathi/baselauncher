@@ -5,24 +5,20 @@
 package app.vercel.baselauncher.twa;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.ProgressBar;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
-
-public class WebViewActivity extends AppCompatActivity {
+public class WebViewActivity extends Activity {
     private WebView webView;
     private BasePhoneBridge bridge;
     private static final String URL = "https://baselauncher.vercel.app";
@@ -32,16 +28,26 @@ public class WebViewActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Full screen immersive mode
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        // Remove title bar
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         
-        WindowInsetsControllerCompat windowInsetsController = 
-            WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
-        windowInsetsController.setSystemBarsBehavior(
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        // Full screen
+        getWindow().setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
         );
-        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars());
+        
+        // Immersive mode for API 19+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            );
+        }
         
         // Create WebView
         webView = new WebView(this);
@@ -60,12 +66,15 @@ public class WebViewActivity extends AppCompatActivity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
         
-        // Modern WebView settings
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        // API level specific settings
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(false);
         }
         
@@ -91,10 +100,12 @@ public class WebViewActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 // Inject notification that Android bridge is available
-                webView.evaluateJavascript(
-                    "if(window.dispatchEvent) { window.dispatchEvent(new CustomEvent('androidBridgeReady')); }",
-                    null
-                );
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    webView.evaluateJavascript(
+                        "if(window.dispatchEvent) { window.dispatchEvent(new CustomEvent('androidBridgeReady')); }",
+                        null
+                    );
+                }
             }
         });
         
@@ -104,44 +115,50 @@ public class WebViewActivity extends AppCompatActivity {
         // Load the app
         webView.loadUrl(URL);
         
-        // Request permissions on start
-        requestNecessaryPermissions();
+        // Request permissions on start (API 23+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestNecessaryPermissions();
+        }
     }
     
     private void requestNecessaryPermissions() {
-        String[] permissions = {
-            android.Manifest.permission.READ_CONTACTS,
-            android.Manifest.permission.CALL_PHONE,
-            android.Manifest.permission.SEND_SMS
-        };
-        
-        java.util.List<String> permissionsToRequest = new java.util.ArrayList<>();
-        for (String permission : permissions) {
-            if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(permission);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            String[] permissions = {
+                android.Manifest.permission.READ_CONTACTS,
+                android.Manifest.permission.CALL_PHONE,
+                android.Manifest.permission.SEND_SMS
+            };
+            
+            java.util.List<String> permissionsToRequest = new java.util.ArrayList<>();
+            for (String permission : permissions) {
+                if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                    permissionsToRequest.add(permission);
+                }
             }
-        }
-        
-        if (!permissionsToRequest.isEmpty()) {
-            requestPermissions(permissionsToRequest.toArray(new String[0]), BasePhoneBridge.PERMISSION_REQUEST_CODE);
+            
+            if (!permissionsToRequest.isEmpty()) {
+                requestPermissions(permissionsToRequest.toArray(new String[0]), BasePhoneBridge.PERMISSION_REQUEST_CODE);
+            }
         }
     }
     
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == BasePhoneBridge.PERMISSION_REQUEST_CODE) {
             // Notify WebView that permissions may have changed
-            webView.evaluateJavascript(
-                "if(window.dispatchEvent) { window.dispatchEvent(new CustomEvent('permissionsUpdated')); }",
-                null
-            );
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                webView.evaluateJavascript(
+                    "if(window.dispatchEvent) { window.dispatchEvent(new CustomEvent('permissionsUpdated')); }",
+                    null
+                );
+            }
         }
     }
     
     @Override
     public void onBackPressed() {
-        if (webView.canGoBack()) {
+        if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
             // Don't exit, we're a home launcher
@@ -151,15 +168,35 @@ public class WebViewActivity extends AppCompatActivity {
     }
     
     @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // Re-apply immersive mode when window gains focus
+        if (hasFocus && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            );
+        }
+    }
+    
+    @Override
     protected void onResume() {
         super.onResume();
-        webView.onResume();
+        if (webView != null) {
+            webView.onResume();
+        }
     }
     
     @Override
     protected void onPause() {
         super.onPause();
-        webView.onPause();
+        if (webView != null) {
+            webView.onPause();
+        }
     }
     
     @Override
