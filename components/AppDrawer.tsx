@@ -119,7 +119,7 @@ const getInstalledApps = (): InstalledApp[] => {
   }
 };
 
-const ITEMS_PER_PAGE = 9;
+const ITEMS_PER_PAGE = 12;
 
 export default function AppDrawer() {
   const { setShowAppDrawer, setShowUserConfig } = useUI();
