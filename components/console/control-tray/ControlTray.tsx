@@ -35,7 +35,7 @@ function ControlTray({ children }: ControlTrayProps) {
   const [muted, setMuted] = useState(false);
   const connectButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { showAgentEdit, showUserConfig } = useUI();
+  const { showAgentEdit, showUserConfig, setShowDialer, setShowAppDrawer } = useUI();
   const { client, connected, connect, disconnect } = useLiveAPIContext();
 
   // Stop the current agent if the user is editing the agent or user config
@@ -72,6 +72,15 @@ function ControlTray({ children }: ControlTrayProps) {
 
   return (
     <section className="control-tray">
+      {/* Phone FAB - Left of mic */}
+      <button 
+        className="fab phone-fab" 
+        onClick={() => setShowDialer(true)} 
+        title="Phone"
+      >
+        <span className="material-symbols-outlined">call</span>
+      </button>
+
       <nav className={cn('actions-nav', { disabled: !connected })}>
         <button
           className={cn('action-button mic-button')}
@@ -100,6 +109,15 @@ function ControlTray({ children }: ControlTrayProps) {
         </div>
         <span className="text-indicator">Streaming</span>
       </div>
+
+      {/* Apps FAB - Right of play */}
+      <button 
+        className="fab app-drawer-fab" 
+        onClick={() => setShowAppDrawer(true)} 
+        title="Apps"
+      >
+        <span className="material-symbols-outlined">apps</span>
+      </button>
     </section>
   );
 }

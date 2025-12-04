@@ -76,9 +76,7 @@ function App() {
     showAppDrawer, 
     showRewards,
     showDialer,
-    showSettings,
-    setShowAppDrawer,
-    setShowDialer
+    showSettings
   } = useUI();
   const { current } = useAgent();
 
@@ -106,15 +104,6 @@ function App() {
 
             <ControlTray></ControlTray>
           </main>
-        </div>
-
-        <div className="floating-action-container">
-            <button className="fab app-drawer-fab" onClick={() => setShowAppDrawer(true)} title="Apps">
-                <span className="icon">apps</span>
-            </button>
-            <button className="fab phone-fab" onClick={() => setShowDialer(true)} title="Phone">
-                <span className="icon">call</span>
-            </button>
         </div>
 
       </LiveAPIProvider>
