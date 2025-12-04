@@ -205,7 +205,7 @@ export interface ConnectResult {
 
 /**
  * Connect wallet with Sign in with Base (SIWB)
- * In WebView: Opens Chrome browser for authentication
+ * In WebView: Opens Chrome browser for authentication, then redirects back via deep link
  * In Browser: Uses SDK popup directly
  */
 export async function connectWallet(options?: {
@@ -213,21 +213,22 @@ export async function connectWallet(options?: {
 }): Promise<ConnectResult> {
   // Check if we're in a WebView - must use Chrome for passkey auth
   if (isAndroidWebView()) {
-    console.log('Android WebView detected - opening Base Account in Chrome');
+    console.log('Android WebView detected - opening wallet connect page in Chrome');
     
-    // Open the Base web app in Chrome where auth will work
-    // User completes sign-in there, then wallet state syncs via localStorage
-    const webAppUrl = 'https://baselauncher.vercel.app/?connect=true';
+    // Open the wallet connect page in Chrome
+    // After successful auth, the page will redirect back to the app via deep link
+    const connectUrl = 'https://baselauncher.vercel.app/wallet-connect.html';
+    
     if ((window as any).Android?.openUrl) {
-      (window as any).Android.openUrl(webAppUrl);
+      (window as any).Android.openUrl(connectUrl);
       return {
         success: false,
-        error: 'Opening in Chrome browser. Complete sign-in there, then return to the app.',
+        error: 'Opening wallet in Chrome. Sign in there and you\'ll be redirected back.',
       };
     }
     
     // Fallback: try opening in a new window
-    window.open(webAppUrl, '_blank');
+    window.open(connectUrl, '_blank');
     return {
       success: false,
       error: 'Opening sign-in page. Complete in browser and return.',

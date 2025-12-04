@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base Phone - Connect Wallet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0052FF 0%, #0035A0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 400px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 24px;
+            border-radius: 16px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .button {
+            display: inline-block;
+            padding: 16px 40px;
+            background: white;
+            color: #0052FF;
+            text-decoration: none;
+            border-radius: 24px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .success {
+            color: #4ade80;
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .error-text {
+            color: #fca5a5;
+            background: rgba(0,0,0,0.2);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        .address {
+            font-family: monospace;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin: 16px 0;
+            word-break: break-all;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+        }
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: white;
+            color: #0052FF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Initial Connect Screen -->
+        <div id="connect-screen">
+            <div class="logo">📱</div>
+            <h1>Connect to Base Phone</h1>
+            <p>Create or sign in to your Base Account wallet using passkeys.</p>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <span>Tap "Connect Wallet" below</span>
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                <span>Sign in with your passkey or create a new account</span>
+            </div>
+            <div class="step">
+                <span class="step-number">3</span>
+                <span>You'll be redirected back to the app</span>
+            </div>
+            
+            <button id="connect-btn" class="button" onclick="connectWallet()">
+                Connect Wallet
+            </button>
+            
+            <div id="error-container" class="error-text hidden"></div>
+        </div>
+        
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="hidden">
+            <div class="spinner"></div>
+            <h1>Connecting...</h1>
+            <p>Please complete the sign-in in the popup window.</p>
+        </div>
+        
+        <!-- Success Screen -->
+        <div id="success-screen" class="hidden">
+            <div class="success">✓</div>
+            <h1>Wallet Connected!</h1>
+            <div id="wallet-address" class="address"></div>
+            <p>Redirecting you back to Base Phone...</p>
+            <div class="spinner"></div>
+            <button class="button" onclick="returnToApp()" style="margin-top: 24px;">
+                Open Base Phone
+            </button>
+        </div>
+    </div>
+
+    <!-- Load Base Account SDK from CDN -->
+    <script type="module">
+        import { createBaseAccountSDK } from 'https://esm.sh/@base-org/account@2.5.0';
+        
+        // Store SDK globally
+        window.baseAccountSDK = createBaseAccountSDK({
+            appName: 'Base Phone Launcher',
+            appLogoUrl: 'https://baselauncher.vercel.app/icon-192x192.png'
+        });
+        
+        // Enable connect button once SDK loads
+        document.getElementById('connect-btn').disabled = false;
+        console.log('Base Account SDK loaded');
+    </script>
+    
+    <script>
+        let connectedAddress = null;
+        
+        function showScreen(screenId) {
+            document.querySelectorAll('.container > div').forEach(div => {
+                div.classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+        
+        function showError(message) {
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.textContent = message;
+            errorContainer.classList.remove('hidden');
+        }
+        
+        async function connectWallet() {
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.classList.add('hidden');
+            
+            showScreen('loading-screen');
+            
+            try {
+                if (!window.baseAccountSDK) {
+                    throw new Error('SDK not loaded. Please refresh the page.');
+                }
+                
+                const provider = window.baseAccountSDK.getProvider();
+                console.log('Attempting wallet_connect...');
+                
+                const response = await provider.request({ 
+                    method: 'wallet_connect' 
+                });
+                
+                console.log('wallet_connect response:', response);
+                
+                // Extract address from response
+                let address = null;
+                if (response?.accounts?.[0]?.address) {
+                    address = response.accounts[0].address;
+                } else if (Array.isArray(response) && response[0]) {
+                    address = response[0];
+                } else if (response?.address) {
+                    address = response.address;
+                }
+                
+                if (!address) {
+                    throw new Error('No wallet address returned');
+                }
+                
+                connectedAddress = address;
+                
+                // Save to localStorage (for this browser session)
+                localStorage.setItem('baseAccount_address', address);
+                localStorage.setItem('baseAccount_connected', 'true');
+                localStorage.setItem('baseAccount_setupComplete', 'true');
+                
+                // Show success and redirect
+                document.getElementById('wallet-address').textContent = 
+                    address.slice(0, 10) + '...' + address.slice(-8);
+                showScreen('success-screen');
+                
+                // Auto-redirect after a short delay
+                setTimeout(returnToApp, 1500);
+                
+            } catch (error) {
+                console.error('Wallet connection failed:', error);
+                showScreen('connect-screen');
+                
+                let errorMessage = error.message || 'Connection failed';
+                if (errorMessage.includes('User rejected') || errorMessage.includes('cancelled')) {
+                    errorMessage = 'Sign-in was cancelled. Tap to try again.';
+                } else if (errorMessage.includes('popup')) {
+                    errorMessage = 'Popup was blocked. Please allow popups and try again.';
+                }
+                
+                showError(errorMessage);
+            }
+        }
+        
+        function returnToApp() {
+            if (!connectedAddress) {
+                // Try to get from localStorage
+                connectedAddress = localStorage.getItem('baseAccount_address');
+            }
+            
+            if (connectedAddress) {
+                // Try custom scheme first
+                const customUrl = `basephone://auth?address=${encodeURIComponent(connectedAddress)}`;
+                console.log('Redirecting to:', customUrl);
+                
+                // Set location to custom scheme
+                window.location.href = customUrl;
+                
+                // Fallback: try intent URL after a delay
+                setTimeout(() => {
+                    const intentUrl = `intent://auth?address=${encodeURIComponent(connectedAddress)}#Intent;scheme=basephone;package=app.vercel.baselauncher.twa;end`;
+                    window.location.href = intentUrl;
+                }, 1500);
+            } else {
+                alert('No wallet address found. Please connect first.');
+            }
+        }
+        
+        // Disable button until SDK loads
+        document.getElementById('connect-btn').disabled = true;
+        
+        // Fallback if SDK doesn't load
+        setTimeout(() => {
+            if (!window.baseAccountSDK) {
+                document.getElementById('connect-btn').disabled = false;
+                showError('SDK loading... If this persists, refresh the page.');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

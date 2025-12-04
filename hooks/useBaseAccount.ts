@@ -274,10 +274,28 @@ export function useBaseAccount(): UseBaseAccountReturn {
  * Hook for automatic Base Account setup on first launch
  * Only restores existing connection from localStorage, never auto-connects
  * This avoids popups/errors in WebView environments
+ * Also listens for walletConnected events from deep link callbacks
  */
 export function useAutoSetupBaseAccount(): void {
   const { baseAccount, setBaseAccountInitialized, setBaseAccountConnected } = useUser();
   const initAttempted = useRef(false);
+
+  useEffect(() => {
+    // Listen for wallet connection events (from deep link callbacks)
+    const handleWalletConnected = (event: CustomEvent<{ address: string }>) => {
+      const address = event.detail?.address;
+      if (address) {
+        console.log('Wallet connected via deep link:', address);
+        setBaseAccountConnected(address);
+      }
+    };
+    
+    window.addEventListener('walletConnected', handleWalletConnected as EventListener);
+    
+    return () => {
+      window.removeEventListener('walletConnected', handleWalletConnected as EventListener);
+    };
+  }, [setBaseAccountConnected]);
 
   useEffect(() => {
     // Only attempt once

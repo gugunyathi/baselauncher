@@ -121,6 +121,7 @@
         <activity android:name=".WebViewActivity"
             android:alwaysRetainTaskState="true"
             android:label="@string/launcherName"
+            android:launchMode="singleTask"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden">
@@ -133,6 +134,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- Deep link callback for wallet auth -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                    android:host="baselauncher.vercel.app"
+                    android:pathPrefix="/callback" />
+            </intent-filter>
+            <!-- Custom scheme for direct app callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="basephone"
+                    android:host="auth" />
             </intent-filter>
         </activity>
         

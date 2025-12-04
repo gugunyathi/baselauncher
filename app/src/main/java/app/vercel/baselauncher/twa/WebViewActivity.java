@@ -338,13 +338,70 @@ public class WebViewActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        // Handle deep links / callbacks from Chrome
-        if (intent != null && intent.getData() != null) {
-            String url = intent.getData().toString();
-            Log.d(TAG, "onNewIntent with URL: " + url);
-            if (url.contains("baselauncher.vercel.app")) {
-                webView.loadUrl(url);
+        setIntent(intent);
+        handleIntent(intent);
+    }
+    
+    /**
+     * Handle incoming intents (deep links, auth callbacks)
+     */
+    private void handleIntent(Intent intent) {
+        if (intent == null || intent.getData() == null) return;
+        
+        Uri uri = intent.getData();
+        String url = uri.toString();
+        Log.d(TAG, "handleIntent with URL: " + url);
+        
+        // Handle basephone:// custom scheme callback
+        if ("basephone".equals(uri.getScheme())) {
+            String address = uri.getQueryParameter("address");
+            if (address != null && !address.isEmpty()) {
+                Log.d(TAG, "Received wallet address from callback: " + address);
+                // Save to WebView localStorage and notify app
+                saveWalletAddress(address);
             }
+            return;
+        }
+        
+        // Handle https://baselauncher.vercel.app/callback?address=...
+        if (url.contains("baselauncher.vercel.app/callback")) {
+            String address = uri.getQueryParameter("address");
+            if (address != null && !address.isEmpty()) {
+                Log.d(TAG, "Received wallet address from web callback: " + address);
+                saveWalletAddress(address);
+            }
+            return;
+        }
+        
+        // Handle other baselauncher URLs
+        if (url.contains("baselauncher.vercel.app")) {
+            webView.loadUrl(url);
+        }
+    }
+    
+    /**
+     * Save wallet address to WebView localStorage and notify the app
+     */
+    private void saveWalletAddress(String address) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            String js = String.format(
+                "(function() {" +
+                "  try {" +
+                "    localStorage.setItem('baseAccount_address', '%s');" +
+                "    localStorage.setItem('baseAccount_connected', 'true');" +
+                "    localStorage.setItem('baseAccount_setupComplete', 'true');" +
+                "    console.log('Wallet address saved:', '%s');" +
+                "    " +
+                "    // Dispatch event to notify React app" +
+                "    window.dispatchEvent(new CustomEvent('walletConnected', { detail: { address: '%s' } }));" +
+                "    " +
+                "    // Reload to pick up the new state" +
+                "    window.location.reload();" +
+                "  } catch(e) { console.error('Failed to save wallet:', e); }" +
+                "})();",
+                address, address, address
+            );
+            webView.evaluateJavascript(js, null);
         }
     }
     

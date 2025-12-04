@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base Phone - Connecting...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0052FF 0%, #0035A0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 24px;
+            border-radius: 16px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 32px;
+            background: white;
+            color: #0052FF;
+            text-decoration: none;
+            border-radius: 24px;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+        .success {
+            color: #4ade80;
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .error {
+            color: #f87171;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="content">
+        <div class="spinner"></div>
+        <h1>Connecting Wallet...</h1>
+        <p>Please wait while we complete the connection.</p>
+    </div>
+
+    <script>
+        (function() {
+            const container = document.getElementById('content');
+            
+            // Get address from URL params
+            const params = new URLSearchParams(window.location.search);
+            const address = params.get('address');
+            
+            // Check if we came from wallet connect with an address in hash or storage
+            function getWalletAddress() {
+                // Check URL params first
+                if (address) return address;
+                
+                // Check localStorage (may have been set by Base Account SDK)
+                try {
+                    const stored = localStorage.getItem('baseAccount_address');
+                    if (stored) return stored;
+                } catch (e) {}
+                
+                return null;
+            }
+            
+            function redirectToApp(walletAddress) {
+                if (walletAddress) {
+                    container.innerHTML = `
+                        <div class="success">✓</div>
+                        <h1>Wallet Connected!</h1>
+                        <p>Address: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}</p>
+                        <p>Returning to Base Phone...</p>
+                    `;
+                    
+                    // Try custom scheme first (works better on Android)
+                    const customSchemeUrl = `basephone://auth?address=${encodeURIComponent(walletAddress)}`;
+                    
+                    // Try opening via custom scheme
+                    window.location.href = customSchemeUrl;
+                    
+                    // Fallback: after a delay, try intent URL
+                    setTimeout(() => {
+                        // Android intent fallback
+                        const intentUrl = `intent://auth?address=${encodeURIComponent(walletAddress)}#Intent;scheme=basephone;package=app.vercel.baselauncher.twa;end`;
+                        window.location.href = intentUrl;
+                    }, 1000);
+                    
+                    // Final fallback: show manual button
+                    setTimeout(() => {
+                        container.innerHTML += `
+                            <a href="${customSchemeUrl}" class="button">Open Base Phone</a>
+                            <p style="margin-top: 16px; font-size: 14px; opacity: 0.7;">
+                                If the app doesn't open automatically, tap the button above.
+                            </p>
+                        `;
+                    }, 2000);
+                } else {
+                    container.innerHTML = `
+                        <div class="error" style="font-size: 48px;">✕</div>
+                        <h1>Connection Failed</h1>
+                        <p>No wallet address received. Please try again.</p>
+                        <a href="/" class="button">Return to App</a>
+                    `;
+                }
+            }
+            
+            // Wait a moment for any SDK callbacks to complete
+            setTimeout(() => {
+                const walletAddress = getWalletAddress();
+                redirectToApp(walletAddress);
+            }, 500);
+        })();
+    </script>
+</body>
+</html>
