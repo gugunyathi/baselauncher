@@ -514,6 +514,92 @@ export async function sendEth(to: string, amountEth: string): Promise<{ success:
 }
 
 /**
+ * Send ERC20 token (USDC or cbBTC)
+ */
+export async function sendERC20Token(
+  tokenAddress: string, 
+  to: string, 
+  amount: string,
+  decimals: number
+): Promise<{ success: boolean; hash?: string; error?: string }> {
+  try {
+    const provider = getProvider();
+    const address = getStoredAddress();
+    
+    if (!address) {
+      throw new Error('Wallet not connected');
+    }
+    
+    // Convert amount to token units based on decimals
+    const tokenUnits = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, decimals)));
+    const hexAmount = '0x' + tokenUnits.toString(16).padStart(64, '0');
+    const paddedTo = to.toLowerCase().replace('0x', '').padStart(64, '0');
+    
+    // ERC20 transfer function signature: transfer(address,uint256)
+    const transferData = `0xa9059cbb${paddedTo}${hexAmount.replace('0x', '')}`;
+    
+    const hash = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: address,
+        to: tokenAddress,
+        data: transferData,
+      }],
+    }) as string;
+    
+    return { success: true, hash };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Transaction failed';
+    console.error('Send ERC20 token failed:', error);
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
+ * Send any supported token (ETH, USDC, cbBTC)
+ */
+export async function sendToken(
+  token: string,
+  to: string,
+  amount: string
+): Promise<{ success: boolean; hash?: string; error?: string }> {
+  const upperToken = token.toUpperCase();
+  
+  try {
+    let result: { success: boolean; hash?: string; error?: string };
+    
+    if (upperToken === 'ETH') {
+      result = await sendEth(to, amount);
+    } else if (upperToken === 'USDC') {
+      result = await sendERC20Token(TOKEN_CONTRACTS.USDC, to, amount, 6);
+    } else if (upperToken === 'CBBTC') {
+      result = await sendERC20Token(TOKEN_CONTRACTS.cbBTC, to, amount, 8);
+    } else {
+      return { success: false, error: `Unsupported token: ${token}` };
+    }
+    
+    if (result.success && result.hash) {
+      // Save to transaction history
+      saveTransaction({
+        hash: result.hash,
+        type: 'send',
+        amount,
+        token: upperToken,
+        to,
+        timestamp: Date.now(),
+        status: 'pending',
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Transaction failed';
+    console.error('Send token failed:', error);
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
  * Sign a message with the wallet
  */
 export async function signMessage(message: string): Promise<{ success: boolean; signature?: string; error?: string }> {
