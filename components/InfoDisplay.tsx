@@ -228,6 +228,10 @@ export default function InfoDisplay() {
           <span className="weather-condition">{weather.condition}</span>
         )}
       </button>
+      <div className="voice-hint">
+        <span className="icon material-symbols-outlined">mic</span>
+        <span>Try: "Send crypto", "Open WhatsApp", "Call..."</span>
+      </div>
     </div>
   );
 }
