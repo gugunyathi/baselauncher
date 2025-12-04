@@ -210,7 +210,6 @@ dependencies {
     
         implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'
     
-    // Added for WebView and AppCompat support
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    // AndroidX Core is required for FileProvider used in splash screen
     implementation 'androidx.core:core:1.12.0'
 }

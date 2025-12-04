@@ -12,7 +12,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -20,19 +19,13 @@ import android.provider.ContactsContract;
 import android.provider.AlarmClock;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
-import android.location.Location;
-import android.location.LocationManager;
 import android.util.Log;
-
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.List;
-import java.util.ArrayList;
 
 public class BasePhoneBridge {
     private static final String TAG = "BasePhoneBridge";
@@ -96,8 +89,8 @@ public class BasePhoneBridge {
             for (ResolveInfo resolveInfo : resolveInfos) {
                 try {
                     JSONObject app = new JSONObject();
-                    String packageName = resolveInfo.activityInfo.packageName;
-                    app.put("packageName", packageName);
+                    String pkgName = resolveInfo.activityInfo.packageName;
+                    app.put("packageName", pkgName);
                     app.put("appName", resolveInfo.loadLabel(pm).toString());
                     app.put("isSystemApp", (resolveInfo.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0);
                     apps.put(app);
@@ -267,9 +260,10 @@ public class BasePhoneBridge {
             return contacts.toString();
         }
         
+        Cursor cursor = null;
         try {
             ContentResolver cr = context.getContentResolver();
-            Cursor cursor = cr.query(
+            cursor = cr.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 new String[]{
                     ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -279,11 +273,12 @@ public class BasePhoneBridge {
                 },
                 null,
                 null,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC LIMIT 100"
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
             );
             
             if (cursor != null) {
-                while (cursor.moveToNext()) {
+                int count = 0;
+                while (cursor.moveToNext() && count < 100) {
                     try {
                         JSONObject contact = new JSONObject();
                         contact.put("id", cursor.getString(0));
@@ -291,14 +286,18 @@ public class BasePhoneBridge {
                         contact.put("phone", cursor.getString(2));
                         contact.put("type", getPhoneTypeLabel(cursor.getInt(3)));
                         contacts.put(contact);
+                        count++;
                     } catch (JSONException e) {
                         Log.e(TAG, "Error parsing contact: " + e.getMessage());
                     }
                 }
-                cursor.close();
             }
         } catch (Exception e) {
             Log.e(TAG, "Error getting contacts: " + e.getMessage());
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
         }
         
         return contacts.toString();
@@ -439,25 +438,32 @@ public class BasePhoneBridge {
     }
 
     /**
-     * Request a permission
+     * Request all permissions
      */
     @JavascriptInterface
     public void requestPermissions() {
-        String[] permissions = {
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CALL_PHONE,
-            Manifest.permission.SEND_SMS
-        };
-        ActivityCompat.requestPermissions(activity, permissions, PERMISSION_REQUEST_CODE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            String[] permissions = {
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.CALL_PHONE,
+                Manifest.permission.SEND_SMS
+            };
+            activity.requestPermissions(permissions, PERMISSION_REQUEST_CODE);
+        }
     }
 
     // Helper methods
     private boolean hasPermission(String permission) {
-        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED;
+        }
+        return true; // Pre-Marshmallow, permissions granted at install
     }
 
     private void requestPermission(String permission) {
-        ActivityCompat.requestPermissions(activity, new String[]{permission}, PERMISSION_REQUEST_CODE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            activity.requestPermissions(new String[]{permission}, PERMISSION_REQUEST_CODE);
+        }
     }
 
     private String getPhoneTypeLabel(int type) {
