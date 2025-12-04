@@ -119,7 +119,7 @@ const getInstalledApps = (): InstalledApp[] => {
   }
 };
 
-const ITEMS_PER_PAGE = 12;
+const ITEMS_PER_PAGE = 15;
 
 export default function AppDrawer() {
   const { setShowAppDrawer, setShowUserConfig } = useUI();
@@ -306,14 +306,6 @@ export default function AppDrawer() {
             />
           ))}
         </div>
-
-        {/* Swipe hint */}
-        {pages.length > 1 && currentPage === 0 && (
-          <div className="swipe-hint">
-            <span className="icon">swipe_left</span>
-            Swipe to see more apps
-          </div>
-        )}
       </div>
     </Modal>
   );
