@@ -14,13 +14,17 @@
 
 ## 🌟 Overview
 
-Base Phone Launcher is a minimalist, AI-first Android home launcher that replaces your phone's default home screen. It features a conversational AI assistant powered by Google Gemini, wallet integration for Web3, and a clean, distraction-free interface.
+Base Phone Launcher is a minimalist, AI-first Android home launcher that replaces your phone's default home screen. It features a conversational AI assistant powered by Google Gemini, native Base Account wallet integration with passkey authentication, and a clean, distraction-free interface.
 
 ### ✨ Key Features
 
 - **🤖 AI Assistant** - Voice-activated AI companion using Google Gemini Live API
 - **🏠 Home Launcher** - Functions as a full Android home screen replacement
-- **👛 Wallet Integration** - Built-in crypto wallet display for Base chain assets
+- **👛 Base Account Wallet** - Native wallet with passkey authentication on Base Mainnet
+  - Real-time token balances (ETH, USDC, cbBTC)
+  - Send & receive crypto
+  - Transaction history
+  - Message signing
 - **📱 App Drawer** - Clean grid-based app launcher
 - **📞 Dialer** - Integrated phone dialer interface
 - **🎨 Themes** - Multiple customizable background themes
@@ -125,6 +129,8 @@ Or manually: **Settings → Apps → Default apps → Home app**
 | **Vite** | Build Tool |
 | **Zustand** | State Management |
 | **Google Gemini** | AI Assistant |
+| **Base Account SDK** | Wallet & Passkey Auth |
+| **Base Mainnet** | Blockchain Network |
 | **Bubblewrap/TWA** | Android Wrapper |
 | **Vercel** | Hosting |
 
@@ -148,8 +154,11 @@ baselauncher/
 ├── contexts/               # React contexts
 │   └── LiveAPIContext.tsx
 ├── hooks/                  # Custom hooks
+│   ├── useBaseAccount.ts   # Wallet hook
+│   └── ...
 ├── lib/                    # Utilities & state
 │   ├── state.ts
+│   ├── baseAccount.ts      # Base Account SDK integration
 │   ├── prompts.ts
 │   └── presets/agents.ts
 ├── public/                 # Static assets
@@ -215,8 +224,9 @@ Apache 2.0 - See [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 - [Google Gemini](https://ai.google.dev) - AI capabilities
+- [Base](https://base.org) - Blockchain network & Account SDK
 - [Bubblewrap](https://github.com/ArcTouchLLC/aspect) - TWA tooling
-- [Base](https://base.org) - Web3 inspiration
+- [CoinGecko](https://coingecko.com) - Token price data
 
 ---
 
