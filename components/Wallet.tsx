@@ -7,9 +7,10 @@ import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { useUI, useUser } from '@/lib/state';
 import { useBaseAccount } from '@/hooks/useBaseAccount';
-import { Transaction } from '@/lib/baseAccount';
+import { Transaction, TokenBalance } from '@/lib/baseAccount';
 
 type WalletTab = 'assets' | 'activity' | 'send' | 'receive';
+type SendToken = 'ETH' | 'USDC' | 'cbBTC';
 
 export default function Wallet() {
   const { wallet, toggleBalanceVisibility } = useUser();
@@ -30,7 +31,6 @@ export default function Wallet() {
     refreshBalances,
     send,
     sign,
-    checkTxStatus,
     switchNetwork,
   } = useBaseAccount();
 
@@ -41,7 +41,7 @@ export default function Wallet() {
   // Send form state
   const [sendAmount, setSendAmount] = useState('');
   const [sendTo, setSendTo] = useState('');
-  const [sendToken, setSendToken] = useState<'ETH' | 'USDC'>('ETH');
+  const [sendToken, setSendToken] = useState<SendToken>('ETH');
   const [isSending, setIsSending] = useState(false);
   
   // Sign message state
@@ -157,6 +157,31 @@ export default function Wallet() {
       case 'failed': return '✗';
       default: return '⏳';
     }
+  };
+
+  // Get token icon class
+  const getTokenIconClass = (icon: string) => {
+    switch (icon) {
+      case 'eth': return 'eth-icon';
+      case 'usdc': return 'usdc-icon';
+      case 'btc': return 'btc-icon';
+      default: return 'eth-icon';
+    }
+  };
+
+  // Format balance for display
+  const formatBalance = (balance: string, symbol: string) => {
+    const num = parseFloat(balance);
+    if (symbol === 'USDC') return num.toFixed(2);
+    if (symbol === 'cbBTC') return num.toFixed(8);
+    return num.toFixed(6);
+  };
+
+  // Get available balance for selected send token
+  const getAvailableBalance = () => {
+    if (!balances?.tokens) return '0';
+    const token = balances.tokens.find(t => t.symbol === sendToken);
+    return token?.balance || '0';
   };
 
   // Calculate total balance
@@ -281,44 +306,37 @@ export default function Wallet() {
             {/* Assets Tab */}
             {activeTab === 'assets' && (
               <div className="assets-list">
-                <div className="asset-item">
-                  <div className="asset-info">
-                    <span className="asset-icon eth-icon"></span>
-                    <div className="asset-details">
-                      <span className="asset-name">Ethereum</span>
-                      <span className="asset-symbol">ETH</span>
+                {isLoadingBalances ? (
+                  <div className="loading-assets">Loading tokens...</div>
+                ) : balances?.tokens && balances.tokens.length > 0 ? (
+                  balances.tokens.map((token) => (
+                    <div className="asset-item" key={token.symbol}>
+                      <div className="asset-info">
+                        <span className={`asset-icon ${getTokenIconClass(token.icon)}`}></span>
+                        <div className="asset-details">
+                          <span className="asset-name">{token.name}</span>
+                          <span className="asset-symbol">{token.symbol}</span>
+                        </div>
+                      </div>
+                      <div className="asset-balance-info">
+                        <span className="asset-balance">
+                          {wallet.showBalances 
+                            ? `${formatBalance(token.balance, token.symbol)} ${token.symbol}` 
+                            : '••••••'
+                          }
+                        </span>
+                        <span className="asset-usd">
+                          {wallet.showBalances 
+                            ? `$${token.balanceUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                            : '••••'
+                          }
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="asset-balance-info">
-                    <span className="asset-balance">
-                      {wallet.showBalances ? `${balances?.eth || '0'} ETH` : '••••••'}
-                    </span>
-                    <span className="asset-usd">
-                      {wallet.showBalances 
-                        ? `$${((parseFloat(balances?.eth || '0') * 2650)).toFixed(2)}`
-                        : '••••'
-                      }
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="asset-item">
-                  <div className="asset-info">
-                    <span className="asset-icon usdc-icon"></span>
-                    <div className="asset-details">
-                      <span className="asset-name">USD Coin</span>
-                      <span className="asset-symbol">USDC</span>
-                    </div>
-                  </div>
-                  <div className="asset-balance-info">
-                    <span className="asset-balance">
-                      {wallet.showBalances ? `${balances?.usdc || '0'} USDC` : '••••••'}
-                    </span>
-                    <span className="asset-usd">
-                      {wallet.showBalances ? `$${balances?.usdc || '0'}` : '••••'}
-                    </span>
-                  </div>
-                </div>
+                  ))
+                ) : (
+                  <div className="no-assets">No tokens found</div>
+                )}
 
                 <button 
                   className="action-link"
@@ -348,6 +366,13 @@ export default function Wallet() {
                     <span className="asset-icon usdc-icon small"></span>
                     USDC
                   </button>
+                  <button 
+                    className={`token-btn ${sendToken === 'cbBTC' ? 'active' : ''}`}
+                    onClick={() => setSendToken('cbBTC')}
+                  >
+                    <span className="asset-icon btc-icon small"></span>
+                    cbBTC
+                  </button>
                 </div>
 
                 <div className="send-form">
@@ -364,7 +389,7 @@ export default function Wallet() {
                       <span className="token-label">{sendToken}</span>
                     </div>
                     <span className="balance-hint">
-                      Available: {sendToken === 'ETH' ? balances?.eth : balances?.usdc} {sendToken}
+                      Available: {getAvailableBalance()} {sendToken}
                     </span>
                   </div>
 

@@ -1237,6 +1237,14 @@ input[type='range'] {
 .usdc-icon { background-color: #2775CA; }
 .btc-icon { background-color: #F7931A; }
 
+.loading-assets,
+.no-assets {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
 .asset-name {
     font-weight: bold;
 }

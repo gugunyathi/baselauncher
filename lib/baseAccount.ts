@@ -27,11 +27,19 @@ export const CHAIN_IDS = {
   BASE_SEPOLIA: '0x14A34', // 84532 (testnet)
 };
 
-// Token contract addresses on Base
+// Token contract addresses on Base Mainnet
 export const TOKEN_CONTRACTS = {
-  USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base Mainnet
-  WETH: '0x4200000000000000000000000000000000000006', // Wrapped ETH on Base
-  cbETH: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', // Coinbase ETH
+  USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base Mainnet (6 decimals)
+  WETH: '0x4200000000000000000000000000000000000006', // Wrapped ETH on Base (18 decimals)
+  cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', // Coinbase Wrapped BTC (8 decimals)
+  cbETH: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', // Coinbase Staked ETH (18 decimals)
+};
+
+// Token metadata
+export const TOKEN_INFO: Record<string, { symbol: string; name: string; decimals: number; icon: string }> = {
+  ETH: { symbol: 'ETH', name: 'Ethereum', decimals: 18, icon: 'eth' },
+  USDC: { symbol: 'USDC', name: 'USD Coin', decimals: 6, icon: 'usdc' },
+  cbBTC: { symbol: 'cbBTC', name: 'Coinbase BTC', decimals: 8, icon: 'btc' },
 };
 
 // ERC20 ABI for balance checking
@@ -310,6 +318,20 @@ export async function getEthBalance(address: string): Promise<string> {
 }
 
 /**
+ * Get token decimals based on contract address
+ */
+function getTokenDecimals(tokenAddress: string): number {
+  switch (tokenAddress.toLowerCase()) {
+    case TOKEN_CONTRACTS.USDC.toLowerCase():
+      return 6;
+    case TOKEN_CONTRACTS.cbBTC.toLowerCase():
+      return 8;
+    default:
+      return 18;
+  }
+}
+
+/**
  * Get ERC20 token balance
  */
 export async function getTokenBalance(tokenAddress: string, walletAddress: string): Promise<string> {
@@ -330,44 +352,120 @@ export async function getTokenBalance(tokenAddress: string, walletAddress: strin
       ],
     }) as string;
     
-    // Parse the result (assuming 6 decimals for USDC, 18 for others)
-    const decimals = tokenAddress === TOKEN_CONTRACTS.USDC ? 6 : 18;
+    // Parse the result based on token decimals
+    const decimals = getTokenDecimals(tokenAddress);
     const balance = parseInt(result, 16) / Math.pow(10, decimals);
-    return balance.toFixed(decimals === 6 ? 2 : 6);
+    
+    // Format based on decimals
+    if (decimals === 6) return balance.toFixed(2);
+    if (decimals === 8) return balance.toFixed(8);
+    return balance.toFixed(6);
   } catch (error) {
     console.error('Failed to get token balance:', error);
     return '0';
   }
 }
 
+export interface TokenBalance {
+  symbol: string;
+  name: string;
+  balance: string;
+  balanceUsd: number;
+  icon: string;
+  contractAddress?: string;
+}
+
 export interface WalletBalances {
-  eth: string;
-  usdc: string;
+  tokens: TokenBalance[];
   totalUsd: number;
 }
 
+// Current approximate prices (in production, fetch from price API)
+const TOKEN_PRICES: Record<string, number> = {
+  ETH: 3500,
+  USDC: 1,
+  cbBTC: 100000,
+};
+
 /**
- * Get all wallet balances
+ * Fetch current token prices from CoinGecko
+ */
+export async function fetchTokenPrices(): Promise<Record<string, number>> {
+  try {
+    const response = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,usd-coin,bitcoin&vs_currencies=usd'
+    );
+    const data = await response.json();
+    return {
+      ETH: data.ethereum?.usd || TOKEN_PRICES.ETH,
+      USDC: data['usd-coin']?.usd || 1,
+      cbBTC: data.bitcoin?.usd || TOKEN_PRICES.cbBTC,
+    };
+  } catch (error) {
+    console.error('Failed to fetch token prices:', error);
+    return TOKEN_PRICES;
+  }
+}
+
+/**
+ * Get all wallet balances with USD values
  */
 export async function getWalletBalances(address: string): Promise<WalletBalances> {
   try {
-    const [eth, usdc] = await Promise.all([
+    // Fetch balances and prices in parallel
+    const [eth, usdc, cbBTC, prices] = await Promise.all([
       getEthBalance(address),
       getTokenBalance(TOKEN_CONTRACTS.USDC, address),
+      getTokenBalance(TOKEN_CONTRACTS.cbBTC, address),
+      fetchTokenPrices(),
     ]);
     
-    // Calculate total USD value (ETH price is approximate)
-    const ethPrice = 2650; // TODO: Get real price from API
-    const totalUsd = (parseFloat(eth) * ethPrice) + parseFloat(usdc);
+    const ethBalance = parseFloat(eth);
+    const usdcBalance = parseFloat(usdc);
+    const cbBTCBalance = parseFloat(cbBTC);
+    
+    const tokens: TokenBalance[] = [
+      {
+        symbol: 'ETH',
+        name: 'Ethereum',
+        balance: eth,
+        balanceUsd: ethBalance * prices.ETH,
+        icon: 'eth',
+      },
+      {
+        symbol: 'USDC',
+        name: 'USD Coin',
+        balance: usdc,
+        balanceUsd: usdcBalance * prices.USDC,
+        icon: 'usdc',
+        contractAddress: TOKEN_CONTRACTS.USDC,
+      },
+      {
+        symbol: 'cbBTC',
+        name: 'Coinbase BTC',
+        balance: cbBTC,
+        balanceUsd: cbBTCBalance * prices.cbBTC,
+        icon: 'btc',
+        contractAddress: TOKEN_CONTRACTS.cbBTC,
+      },
+    ];
+    
+    const totalUsd = tokens.reduce((sum, token) => sum + token.balanceUsd, 0);
     
     return {
-      eth,
-      usdc,
+      tokens,
       totalUsd,
     };
   } catch (error) {
     console.error('Failed to get wallet balances:', error);
-    return { eth: '0', usdc: '0', totalUsd: 0 };
+    return { 
+      tokens: [
+        { symbol: 'ETH', name: 'Ethereum', balance: '0', balanceUsd: 0, icon: 'eth' },
+        { symbol: 'USDC', name: 'USD Coin', balance: '0', balanceUsd: 0, icon: 'usdc', contractAddress: TOKEN_CONTRACTS.USDC },
+        { symbol: 'cbBTC', name: 'Coinbase BTC', balance: '0', balanceUsd: 0, icon: 'btc', contractAddress: TOKEN_CONTRACTS.cbBTC },
+      ],
+      totalUsd: 0 
+    };
   }
 }
 
