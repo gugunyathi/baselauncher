@@ -205,36 +205,12 @@ export interface ConnectResult {
 
 /**
  * Connect wallet with Sign in with Base (SIWB)
- * In WebView: Opens Chrome browser for authentication, then redirects back via deep link
+ * In WebView: Opens in-app popup browser for authentication
  * In Browser: Uses SDK popup directly
  */
 export async function connectWallet(options?: {
   testnet?: boolean;
 }): Promise<ConnectResult> {
-  // Check if we're in a WebView - must use Chrome for passkey auth
-  if (isAndroidWebView()) {
-    console.log('Android WebView detected - opening wallet connect page in Chrome');
-    
-    // Open the wallet connect page in Chrome
-    // After successful auth, the page will redirect back to the app via deep link
-    const connectUrl = 'https://baselauncher.vercel.app/wallet-connect.html';
-    
-    if ((window as any).Android?.openUrl) {
-      (window as any).Android.openUrl(connectUrl);
-      return {
-        success: false,
-        error: 'Opening wallet in Chrome. Sign in there and you\'ll be redirected back.',
-      };
-    }
-    
-    // Fallback: try opening in a new window
-    window.open(connectUrl, '_blank');
-    return {
-      success: false,
-      error: 'Opening sign-in page. Complete in browser and return.',
-    };
-  }
-
   try {
     // Get SDK and provider - following official docs pattern
     const sdk = getBaseAccountSDK();
@@ -243,6 +219,7 @@ export async function connectWallet(options?: {
     console.log('Attempting wallet_connect...');
     
     // Simple wallet_connect call as per official docs
+    // The Android WebView will intercept this popup and show an in-app browser
     // https://docs.base.org/base-account/quickstart/web-react
     const response = await provider.request({ 
       method: 'wallet_connect' 

@@ -6,21 +6,31 @@ package app.vercel.baselauncher.twa;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.util.Log;
 
 public class WebViewActivity extends Activity {
@@ -29,8 +39,12 @@ public class WebViewActivity extends Activity {
     private BasePhoneBridge bridge;
     private static final String URL = "https://baselauncher.vercel.app";
     
-    // Domains that should open in external browser for auth
-    private static final String[] EXTERNAL_AUTH_DOMAINS = {
+    // Auth popup dialog
+    private Dialog authDialog;
+    private WebView authWebView;
+    
+    // Domains that need special handling for auth
+    private static final String[] AUTH_DOMAINS = {
         "keys.coinbase.com",
         "wallet.coinbase.com", 
         "coinbase.com",
@@ -153,39 +167,17 @@ public class WebViewActivity extends Activity {
                 
                 if (url != null) {
                     Log.d(TAG, "Popup URL from HitTestResult: " + url);
-                    if (shouldOpenInExternalBrowser(url)) {
-                        openInChrome(url);
-                        return false;
-                    }
                 }
                 
-                // Create a temporary WebView to capture the URL
-                WebView tempWebView = new WebView(WebViewActivity.this);
-                tempWebView.setWebViewClient(new WebViewClient() {
-                    @Override
-                    public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                        Log.d(TAG, "Popup navigating to: " + url);
-                        if (shouldOpenInExternalBrowser(url)) {
-                            openInChrome(url);
-                        } else {
-                            // Open other popups in external browser too for safety
-                            openInChrome(url);
-                        }
-                        // Destroy temp webview
-                        tempWebView.destroy();
-                        return true;
-                    }
-                });
-                
-                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-                transport.setWebView(tempWebView);
-                resultMsg.sendToTarget();
+                // Create an in-app popup WebView for auth
+                showAuthPopup(resultMsg);
                 return true;
             }
             
             @Override
             public void onCloseWindow(WebView window) {
                 Log.d(TAG, "onCloseWindow called");
+                closeAuthPopup();
             }
         });
         
@@ -245,12 +237,248 @@ public class WebViewActivity extends Activity {
     private boolean shouldOpenInExternalBrowser(String url) {
         if (url == null) return false;
         String lowerUrl = url.toLowerCase();
-        for (String domain : EXTERNAL_AUTH_DOMAINS) {
+        for (String domain : AUTH_DOMAINS) {
             if (lowerUrl.contains(domain)) {
                 return true;
             }
         }
         return false;
+    }
+    
+    /**
+     * Show in-app auth popup browser
+     */
+    @SuppressLint("SetJavaScriptEnabled")
+    private void showAuthPopup(Message resultMsg) {
+        Log.d(TAG, "Showing auth popup");
+        
+        // Create dialog
+        authDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        authDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        authDialog.setCancelable(true);
+        
+        // Create layout
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setBackgroundColor(Color.WHITE);
+        
+        // Header bar with close button
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setBackgroundColor(Color.parseColor("#0052FF"));
+        header.setPadding(16, 16, 16, 16);
+        
+        // Title
+        TextView title = new TextView(this);
+        title.setText("Connect Wallet");
+        title.setTextColor(Color.WHITE);
+        title.setTextSize(18);
+        title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        header.addView(title);
+        
+        // Close button
+        TextView closeBtn = new TextView(this);
+        closeBtn.setText("✕");
+        closeBtn.setTextColor(Color.WHITE);
+        closeBtn.setTextSize(24);
+        closeBtn.setPadding(16, 0, 16, 0);
+        closeBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeAuthPopup();
+            }
+        });
+        header.addView(closeBtn);
+        
+        layout.addView(header, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+        
+        // Progress bar
+        final ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setIndeterminate(true);
+        progressBar.setVisibility(View.VISIBLE);
+        layout.addView(progressBar, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            8
+        ));
+        
+        // Create auth WebView
+        authWebView = new WebView(this);
+        authWebView.setLayoutParams(new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.MATCH_PARENT
+        ));
+        
+        // Configure WebView settings for auth
+        WebSettings settings = authWebView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setSupportMultipleWindows(true);
+        settings.setUserAgentString(settings.getUserAgentString().replace("; wv", "")); // Remove WebView marker
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            CookieManager.getInstance().setAcceptThirdPartyCookies(authWebView, true);
+        }
+        
+        // Handle page events
+        authWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                Log.d(TAG, "Auth popup page started: " + url);
+                progressBar.setVisibility(View.VISIBLE);
+                
+                // Check for callback URL with wallet address
+                if (url.contains("callback") && url.contains("address=")) {
+                    Uri uri = Uri.parse(url);
+                    String address = uri.getQueryParameter("address");
+                    if (address != null && !address.isEmpty()) {
+                        Log.d(TAG, "Got wallet address from auth: " + address);
+                        saveWalletAddress(address);
+                        closeAuthPopup();
+                    }
+                }
+            }
+            
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                Log.d(TAG, "Auth popup page finished: " + url);
+                progressBar.setVisibility(View.GONE);
+                
+                // Inject script to handle successful auth
+                injectAuthSuccessHandler(view);
+            }
+            
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                Log.d(TAG, "Auth popup URL loading: " + url);
+                
+                // Check for our callback with address
+                if (url.startsWith("basephone://") || url.contains("callback")) {
+                    Uri uri = Uri.parse(url);
+                    String address = uri.getQueryParameter("address");
+                    if (address != null && !address.isEmpty()) {
+                        Log.d(TAG, "Received wallet address: " + address);
+                        saveWalletAddress(address);
+                        closeAuthPopup();
+                        return true;
+                    }
+                }
+                
+                // Allow auth domains to load in popup
+                return false;
+            }
+        });
+        
+        // Handle nested popups
+        authWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+                Log.d(TAG, "Auth popup requesting nested popup");
+                // Allow nested popups for OAuth flows
+                WebView nestedWebView = new WebView(WebViewActivity.this);
+                nestedWebView.getSettings().setJavaScriptEnabled(true);
+                nestedWebView.getSettings().setDomStorageEnabled(true);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(nestedWebView, true);
+                }
+                
+                nestedWebView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                        Log.d(TAG, "Nested popup URL: " + url);
+                        if (url.contains("callback") || url.startsWith("basephone://")) {
+                            Uri uri = Uri.parse(url);
+                            String address = uri.getQueryParameter("address");
+                            if (address != null && !address.isEmpty()) {
+                                saveWalletAddress(address);
+                                closeAuthPopup();
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                });
+                
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(nestedWebView);
+                resultMsg.sendToTarget();
+                return true;
+            }
+            
+            @Override
+            public void onCloseWindow(WebView window) {
+                Log.d(TAG, "Nested popup closed");
+            }
+        });
+        
+        layout.addView(authWebView);
+        
+        // Set dialog content
+        authDialog.setContentView(layout);
+        authDialog.setOnDismissListener(dialog -> {
+            Log.d(TAG, "Auth dialog dismissed");
+            if (authWebView != null) {
+                authWebView.destroy();
+                authWebView = null;
+            }
+        });
+        
+        // Connect the popup WebView
+        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+        transport.setWebView(authWebView);
+        resultMsg.sendToTarget();
+        
+        // Show dialog
+        authDialog.show();
+    }
+    
+    /**
+     * Inject script to detect successful auth and extract wallet address
+     */
+    private void injectAuthSuccessHandler(WebView view) {
+        String js = 
+            "(function() {" +
+            "  // Watch for wallet address in localStorage" +
+            "  var checkInterval = setInterval(function() {" +
+            "    var address = localStorage.getItem('baseAccount_address');" +
+            "    if (address && address.startsWith('0x')) {" +
+            "      console.log('Wallet connected:', address);" +
+            "      clearInterval(checkInterval);" +
+            "      // Notify parent via URL" +
+            "      window.location.href = 'basephone://auth?address=' + encodeURIComponent(address);" +
+            "    }" +
+            "  }, 500);" +
+            "  " +
+            "  // Clear after 60 seconds" +
+            "  setTimeout(function() { clearInterval(checkInterval); }, 60000);" +
+            "})();";
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            view.evaluateJavascript(js, null);
+        }
+    }
+    
+    /**
+     * Close auth popup dialog
+     */
+    private void closeAuthPopup() {
+        Log.d(TAG, "Closing auth popup");
+        if (authDialog != null && authDialog.isShowing()) {
+            authDialog.dismiss();
+        }
+        authDialog = null;
+        if (authWebView != null) {
+            authWebView.destroy();
+            authWebView = null;
+        }
     }
     
     /**
@@ -278,7 +506,7 @@ public class WebViewActivity extends Activity {
     }
     
     /**
-     * Inject JavaScript helper to intercept auth popups
+     * Inject JavaScript helper to handle auth flows
      */
     private void injectAuthHelper(WebView view) {
         String js = 
@@ -286,27 +514,17 @@ public class WebViewActivity extends Activity {
             "  if (window._authHelperInjected) return;" +
             "  window._authHelperInjected = true;" +
             "  " +
-            "  // Override window.open to catch auth popups" +
-            "  var originalOpen = window.open;" +
-            "  window.open = function(url, name, features) {" +
-            "    console.log('window.open intercepted:', url);" +
-            "    if (url && (url.includes('keys.coinbase.com') || " +
-            "                url.includes('wallet.coinbase.com') || " +
-            "                url.includes('coinbase.com/signin') ||" +
-            "                url.includes('accounts.google.com'))) {" +
-            "      console.log('Opening auth URL in Chrome:', url);" +
-            "      if (window.Android && window.Android.openUrl) {" +
-            "        window.Android.openUrl(url);" +
-            "        return null;" +
-            "      }" +
-            "    }" +
-            "    return originalOpen.call(window, url, name, features);" +
-            "  };" +
+            "  // Listen for wallet connection events" +
+            "  window.addEventListener('walletConnected', function(e) {" +
+            "    console.log('walletConnected event received');" +
+            "  });" +
             "  " +
-            "  console.log('Auth helper injected');" +
+            "  console.log('Auth helper injected - using in-app browser');" +
             "})();";
         
-        view.evaluateJavascript(js, null);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            view.evaluateJavascript(js, null);
+        }
     }
     
     private void requestNecessaryPermissions() {
