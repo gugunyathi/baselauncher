@@ -209,7 +209,6 @@ export interface ConnectResult {
  */
 export async function connectWallet(options?: {
   testnet?: boolean;
-  nonce?: string;
 }): Promise<ConnectResult> {
   // Check if we're in a WebView - use Chrome for auth
   if (isAndroidWebView()) {
@@ -227,46 +226,32 @@ export async function connectWallet(options?: {
   }
 
   try {
-    const provider = getProvider();
-    const testnet = options?.testnet ?? false;
-    const chainId = testnet ? CHAIN_IDS.BASE_SEPOLIA : CHAIN_IDS.BASE_MAINNET;
+    // Get SDK and provider - following official docs pattern
+    const sdk = getBaseAccountSDK();
+    const provider = sdk.getProvider();
     
-    // Generate nonce for SIWE
-    const nonce = options?.nonce ?? crypto.randomUUID().replace(/-/g, '');
+    console.log('Attempting wallet_connect...');
     
-    // Switch to Base chain first
-    await switchToBaseChain(testnet);
-    
-    // Set a timeout for the connection attempt
-    const connectionPromise = provider.request({
-      method: 'wallet_connect',
-      params: [
-        {
-          version: '1',
-          capabilities: {
-            signInWithEthereum: {
-              nonce,
-              chainId,
-            },
-          },
-        },
-      ],
+    // Simple wallet_connect call as per official docs
+    // https://docs.base.org/base-account/quickstart/web-react
+    const response = await provider.request({ 
+      method: 'wallet_connect' 
     });
-
-    // Add timeout to prevent hanging
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Connection timeout - please try again')), 30000);
-    });
-
-    // Connect and authenticate with passkey
-    // The SDK handles passkey creation/backup automatically
-    const response = await Promise.race([connectionPromise, timeoutPromise]) as { accounts: Array<{ address: string }> };
+    
+    console.log('wallet_connect response:', response);
 
     // Extract address from response
-    const { accounts } = response;
+    // Response format: { accounts: [{ address: string }] }
+    const accounts = (response as any)?.accounts;
     const address = accounts?.[0]?.address;
     
     if (!address) {
+      // Try alternative response format
+      const altAddress = (response as any)?.[0] || (response as any)?.address;
+      if (altAddress) {
+        saveConnectionState(altAddress);
+        return { success: true, address: altAddress };
+      }
       throw new Error('No address returned from wallet');
     }
 
@@ -301,6 +286,13 @@ export async function connectWallet(options?: {
       return {
         success: false,
         error: 'Popup was blocked. Please allow popups for this site and try again.',
+      };
+    }
+    
+    if (errorMessage.includes('User rejected') || errorMessage.includes('cancelled')) {
+      return {
+        success: false,
+        error: 'Sign-in was cancelled.',
       };
     }
     
