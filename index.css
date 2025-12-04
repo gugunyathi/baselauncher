@@ -619,6 +619,27 @@ header:hover .createButton {
   gap: 6px;
   font-size: 20px;
   margin-top: 5px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.info-display .weather:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.info-display .weather:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.info-display .weather-condition {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-left: 4px;
 }
 
 .counter-container {
