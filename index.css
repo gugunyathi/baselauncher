@@ -2114,11 +2114,21 @@ input[type='range'] {
     height: 100%;
     display: flex;
     flex-direction: column;
+    padding-top: 10px;
 }
 
 .drawer-title {
-    margin-bottom: 12px;
-    font-size: 24px;
+    margin-bottom: 4px;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+/* Page indicator */
+.page-indicator {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 8px;
+    flex-shrink: 0;
 }
 
 .app-drawer-pages {
@@ -2141,19 +2151,20 @@ input[type='range'] {
     scroll-snap-align: center;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: stretch;
     padding: 0 10px;
 }
 
 .app-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 16px;
     width: 100%;
-    max-width: 350px;
-    align-content: start;
+    max-width: 320px;
+    align-content: space-evenly;
     height: 100%;
-    padding-bottom: 20px;
+    padding: 0 0 10px 0;
 }
 
 .app-item {
@@ -2197,13 +2208,6 @@ input[type='range'] {
     white-space: nowrap;
 }
 
-/* Page indicator */
-.page-indicator {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 10px;
-}
-
 /* Base app badge */
 .base-app-icon {
     position: relative;
@@ -2229,15 +2233,17 @@ input[type='range'] {
 .swipe-hint {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
-    margin-top: 15px;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 8px 0;
+    flex-shrink: 0;
     animation: fadeInOut 3s ease-in-out infinite;
 }
 
 .swipe-hint .icon {
-    font-size: 18px;
+    font-size: 16px;
     animation: swipeAnim 1.5s ease-in-out infinite;
 }
 
@@ -2247,8 +2253,8 @@ input[type='range'] {
 }
 
 @keyframes fadeInOut {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
 }
 
 /* Pagination dots as buttons */
@@ -2268,8 +2274,8 @@ input[type='range'] {
     display: flex;
     justify-content: center;
     gap: 8px;
-    margin-top: 20px;
-    padding-bottom: 20px;
+    padding: 10px 0;
+    flex-shrink: 0;
 }
 
 .page-dot {
