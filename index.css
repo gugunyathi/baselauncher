@@ -720,11 +720,18 @@ header:hover .createButton {
   border-radius: 0;
   padding: 20px;
   background: rgba(10, 10, 10, 0.95); /* Slightly transparent */
+  display: flex;
+  flex-direction: column;
 }
 
 /* App Drawer Full Screen - minimal padding */
 .modalShroud .modal.app-drawer-modal {
   padding: 10px 8px 0 8px;
+}
+
+.modalShroud .modal.full-screen .modalContent {
+  flex: 1;
+  min-height: 0;
 }
 
 .modalShroud .modal h2 {
@@ -738,6 +745,14 @@ header:hover .createButton {
   color: white;
   font-size: 24px;
   z-index: 10;
+}
+
+/* Modal Content wrapper - must fill parent */
+.modal .modalContent {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* UserSettings */
@@ -2161,7 +2176,7 @@ input[type='range'] {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     background: none;
     border: none;
     cursor: pointer;
@@ -2170,14 +2185,14 @@ input[type='range'] {
 }
 
 .app-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.2s, filter 0.2s;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
 }
 
 .app-item:hover .app-icon,
@@ -2187,7 +2202,7 @@ input[type='range'] {
 }
 
 .app-icon .icon {
-    font-size: 24px;
+    font-size: 28px;
     color: white;
 }
 
